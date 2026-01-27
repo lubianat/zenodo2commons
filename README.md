@@ -63,7 +63,21 @@ npm run preview
 
 ## Deployment
 
+### Production Deployment
+
 The site is automatically deployed to GitHub Pages when changes are pushed to the `main` branch.
+
+### PR Preview Deployments
+
+Pull requests can be previewed before merging:
+
+1. Add the `preview` label to your pull request
+2. The workflow will automatically build and deploy a preview
+3. A comment will be posted with the preview URL (e.g., `https://lubianat.github.io/zenodo2commons/pr_preview/123/`)
+4. The preview is updated automatically when new commits are pushed
+5. The preview is automatically cleaned up when the PR is closed or the `preview` label is removed
+
+This allows reviewers to test changes in a live environment before merging.
 
 ## License
 
