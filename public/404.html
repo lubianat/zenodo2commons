@@ -7,7 +7,11 @@
       // GitHub Pages SPA redirect
       // This script takes the current URL and redirects to the index.html
       // while preserving the path, so the SPA router can handle it
-      sessionStorage.redirect = location.href;
+      try {
+        sessionStorage.setItem('redirect', location.href);
+      } catch (e) {
+        // sessionStorage may fail in private browsing mode
+      }
     </script>
     <meta http-equiv="refresh" content="0;URL='/zenodo2commons/'">
   </head>
