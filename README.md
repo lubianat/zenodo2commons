@@ -12,10 +12,22 @@ This tool allows you to:
 
 ## Usage
 
+### Web Application
+
 1. Visit the deployed site
 2. Enter a Zenodo record ID (e.g., 17607828)
 3. View the record details and files
 4. Click "Upload to Commons" to upload files to Wikimedia Commons
+
+### Browser Extension
+
+For easier access, install the [browser extension](browser-extension/) for Firefox or Chrome! It adds a "Send to Commons" button directly on Zenodo pages.
+
+**Quick install:**
+- **Firefox**: Load the extension from `about:debugging` → Load Temporary Add-on
+- **Chrome**: Load from `chrome://extensions/` → Load unpacked
+
+See the [extension README](browser-extension/README.md) for detailed installation instructions.
 
 ## Development
 

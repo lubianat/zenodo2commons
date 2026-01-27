@@ -1,0 +1,16 @@
+/* Styling for Zenodo2Commons browser extension */
+
+.zenodo2commons-button {
+  background-color: #3366cc !important;
+  color: white !important;
+  transition: background-color 0.2s ease !important;
+}
+
+.zenodo2commons-button:hover {
+  background-color: #254b99 !important;
+  color: white !important;
+}
+
+.zenodo2commons-button i.icon {
+  opacity: 1 !important;
+}
