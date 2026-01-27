@@ -27,9 +27,16 @@
   
   // Function to create the "Send to Commons" button
   function createCommonsButton(recordId) {
+    // Validate recordId is numeric to prevent URL injection
+    if (!/^\d+$/.test(recordId)) {
+      console.warn('Zenodo2Commons: Invalid record ID format:', recordId);
+      return null;
+    }
+    
     const button = document.createElement('a');
     button.href = `${ZENODO2COMMONS_URL}${recordId}`;
     button.target = '_blank';
+    button.rel = 'noopener noreferrer';
     button.className = 'ui button zenodo2commons-button';
     button.innerHTML = `
       <i class="upload icon"></i>
@@ -62,6 +69,7 @@
       const container = document.querySelector(selector);
       if (container && !container.querySelector('.zenodo2commons-button')) {
         const button = createCommonsButton(recordId);
+        if (!button) continue; // Skip if button creation failed
         
         // If it's a button group, add to it; otherwise create a new button group
         if (container.classList.contains('buttons')) {
@@ -98,11 +106,12 @@
       if (!match) return;
       
       const recordId = match[1];
+      const button = createCommonsButton(recordId);
+      if (!button) return; // Skip if button creation failed
       
       // Find where to inject the button
       const titleElement = item.querySelector('h2, h3, h4, .title');
       if (titleElement) {
-        const button = createCommonsButton(recordId);
         button.className = 'ui button mini zenodo2commons-button';
         button.style.marginLeft = '10px';
         button.style.verticalAlign = 'middle';

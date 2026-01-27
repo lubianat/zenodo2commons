@@ -29,6 +29,7 @@
   },
   "permissions": [],
   "host_permissions": [
-    "https://zenodo.org/*"
+    "https://zenodo.org/*",
+    "https://*.zenodo.org/*"
   ]
 }
