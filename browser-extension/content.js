@@ -44,13 +44,18 @@
     const recordId = getZenodoRecordId();
     if (!recordId) return false;
     
+    // Check if button already exists on the page
+    if (document.querySelector('.zenodo2commons-button')) return true;
+    
     // Look for the button container in the record header area
     // This targets the area near the Edit/New Version buttons
     const selectors = [
       '.ui.container .record-header .ui.buttons',
       '.ui.container .record-header',
       '#record-header .ui.buttons',
-      '.preview-container .ui.buttons'
+      '.preview-container .ui.buttons',
+      'article .ui.buttons',
+      '#record-title-section .ui.buttons'
     ];
     
     for (const selector of selectors) {
@@ -64,6 +69,7 @@
         } else {
           const buttonGroup = document.createElement('div');
           buttonGroup.className = 'ui buttons';
+          buttonGroup.style.marginTop = '10px';
           buttonGroup.appendChild(button);
           container.appendChild(buttonGroup);
         }

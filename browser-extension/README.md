@@ -2,6 +2,8 @@
 
 A browser extension for Firefox and Chrome that adds a "Send to Commons" button to Zenodo pages, making it easy to upload open-access files to Wikimedia Commons.
 
+![Extension Demo](https://github.com/user-attachments/assets/44bc87eb-d5e1-4fe6-b35d-3ec5787d8e98)
+
 ## Features
 
 - 🚀 **One-Click Access**: Adds a "Send to Commons" button directly on Zenodo record pages
