@@ -14,8 +14,11 @@
 export function cleanDescription(html) {
   if (!html) return "";
 
-  // 1. Convert HTML to WikiMarkup formatting
-  let text = html
+  // 1. Convert HTML tables to WikiMarkup tables
+  let text = convertTablesToWikiMarkup(html);
+
+  // 2. Convert other HTML to WikiMarkup formatting
+  text = text
     // Convert bold tags to WikiMarkup
     .replace(/<strong[^>]*>(.*?)<\/strong>/gi, "'''$1'''")
     .replace(/<b[^>]*>(.*?)<\/b>/gi, "'''$1'''")
@@ -23,16 +26,14 @@ export function cleanDescription(html) {
     .replace(/<em[^>]*>(.*?)<\/em>/gi, "''$1''")
     .replace(/<i[^>]*>(.*?)<\/i>/gi, "''$1''")
     // Structural replacements
-    .replace(/<\/td>\s*<td[^>]*>/gi, ": ") // Table cells to "Key: Value"
-    .replace(/<\/tr>/gi, "\n") // Table rows to newlines
     .replace(/<\/p>/gi, "\n\n") // Paragraphs to double newlines
     .replace(/<br\s*\/?>/gi, "\n") // Breaks to newlines
     .replace(/<li[^>]*>/gi, "\n* "); // List items
 
-  // 2. Strip remaining tags (after WikiMarkup conversion)
+  // 3. Strip remaining tags (after WikiMarkup conversion)
   text = text.replace(/<[^>]+>/g, "");
 
-  // 3. Remove empty wiki markup (multiple apostrophes with nothing between them)
+  // 4. Remove empty wiki markup (multiple apostrophes with nothing between them)
   text = text.replace(/'{2,}/g, (match) => {
     // Keep valid wiki markup: '' (italic) or ''' (bold)
     // But remove invalid patterns like '''' or longer sequences
@@ -40,7 +41,7 @@ export function cleanDescription(html) {
     return ""; // Remove other apostrophe sequences
   });
 
-  // 4. Decode HTML entities using DOMParser (browser environment)
+  // 5. Decode HTML entities using DOMParser (browser environment)
   if (typeof DOMParser !== "undefined") {
     const doc = new DOMParser().parseFromString(text, "text/html");
     text = doc.documentElement.textContent;
@@ -55,10 +56,57 @@ export function cleanDescription(html) {
       .replace(/&Delta;/g, "Δ");
   }
 
-  // 5. Cleanup whitespace
+  // 6. Cleanup whitespace
   return text
     .split("\n")
     .map((line) => line.trim())
     .filter((line) => line.length > 0) // Remove empty lines
     .join("\n");
+}
+
+/**
+ * Converts HTML tables to WikiMarkup table syntax.
+ * 
+ * @param {string} html - The HTML string containing tables
+ * @returns {string} - The HTML with tables converted to WikiMarkup
+ */
+function convertTablesToWikiMarkup(html) {
+  // Match complete table elements
+  return html.replace(/<table[^>]*>(.*?)<\/table>/gis, (match, tableContent) => {
+    let wikiTable = '\n{| class="wikitable"\n';
+    
+    // Process table rows
+    const rows = tableContent.match(/<tr[^>]*>(.*?)<\/tr>/gis);
+    if (!rows) return match; // Return original if no rows found
+    
+    rows.forEach((row, rowIndex) => {
+      // Check if this row contains header cells
+      const hasHeaders = /<th[^>]*>/i.test(row);
+      
+      // Extract cells (both th and td)
+      const cells = row.match(/<t[hd][^>]*>.*?<\/t[hd]>/gis);
+      if (!cells) return;
+      
+      // Add row separator (except for first row)
+      if (rowIndex > 0) {
+        wikiTable += '|-\n';
+      }
+      
+      // Process each cell
+      cells.forEach(cell => {
+        // Extract cell content
+        const content = cell.replace(/<t[hd][^>]*>(.*?)<\/t[hd]>/is, '$1').trim();
+        
+        // Use ! for header cells, | for data cells
+        if (hasHeaders) {
+          wikiTable += '! ' + content + '\n';
+        } else {
+          wikiTable += '| ' + content + '\n';
+        }
+      });
+    });
+    
+    wikiTable += '|}\n';
+    return wikiTable;
+  });
 }

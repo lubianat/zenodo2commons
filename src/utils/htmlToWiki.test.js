@@ -64,11 +64,98 @@ describe("cleanDescription", () => {
       const expected = "* First item\n* Second item with '''bold'''\n* Third item with ''italic''";
       expect(cleanDescription(input)).toBe(expected);
     });
+  });
 
-    it("converts table cells to key-value format", () => {
-      const input = "<tr><td>Key</td><td>Value</td></tr>";
-      const expected = "Key: Value";
-      expect(cleanDescription(input)).toBe(expected);
+  describe("HTML table to WikiMarkup conversion", () => {
+    it("converts simple HTML table to WikiMarkup table", () => {
+      const input = `<table>
+        <tr><th>Header 1</th><th>Header 2</th></tr>
+        <tr><td>Value 1</td><td>Value 2</td></tr>
+      </table>`;
+      
+      const result = cleanDescription(input);
+      
+      expect(result).toContain("{| class=\"wikitable\"");
+      expect(result).toContain("! Header 1");
+      expect(result).toContain("! Header 2");
+      expect(result).toContain("|-");
+      expect(result).toContain("| Value 1");
+      expect(result).toContain("| Value 2");
+      expect(result).toContain("|}");
+    });
+
+    it("converts table with multiple rows", () => {
+      const input = `<table>
+        <tr><th>Column 1</th><th>Column 2</th></tr>
+        <tr><td>Row 1 Col 1</td><td>Row 1 Col 2</td></tr>
+        <tr><td>Row 2 Col 1</td><td>Row 2 Col 2</td></tr>
+      </table>`;
+      
+      const result = cleanDescription(input);
+      
+      expect(result).toContain("! Column 1");
+      expect(result).toContain("! Column 2");
+      expect(result).toContain("| Row 1 Col 1");
+      expect(result).toContain("| Row 2 Col 2");
+    });
+
+    it("converts table with formatting in cells", () => {
+      const input = `<table>
+        <tr><th>Study</th><th>Type</th></tr>
+        <tr><td><strong>Biosample</strong></td><td><em>Homo sapiens</em></td></tr>
+      </table>`;
+      
+      const result = cleanDescription(input);
+      
+      expect(result).toContain("! Study");
+      expect(result).toContain("'''Biosample'''");
+      expect(result).toContain("''Homo sapiens''");
+    });
+
+    it("converts table without headers", () => {
+      const input = `<table>
+        <tr><td>Cell 1</td><td>Cell 2</td></tr>
+        <tr><td>Cell 3</td><td>Cell 4</td></tr>
+      </table>`;
+      
+      const result = cleanDescription(input);
+      
+      expect(result).toContain("{| class=\"wikitable\"");
+      expect(result).toContain("| Cell 1");
+      expect(result).toContain("| Cell 2");
+      expect(result).toContain("|-");
+      expect(result).toContain("| Cell 3");
+      expect(result).toContain("| Cell 4");
+      expect(result).toContain("|}");
+    });
+
+    it("handles real-world Zenodo table example", () => {
+      const input = `<table>
+        <tr><th>Study</th></tr>
+        <tr><td>Study description</td></tr>
+        <tr><td>Ultrastructure of the immune synapse</td></tr>
+        <tr><td>Study type</td></tr>
+        <tr><td>Research project within DFG CRC 854</td></tr>
+        <tr><th>Study Component</th></tr>
+        <tr><td>Imaging method</td></tr>
+        <tr><td>Scanning Electron Microscopy</td></tr>
+        <tr><th>Biosample</th></tr>
+        <tr><td>Biological entity</td></tr>
+        <tr><td>Jurkat cell line E6.1 and Raji B cell lymphoma cell line</td></tr>
+        <tr><td>Organism</td></tr>
+        <tr><td><em>Homo sapiens</em></td></tr>
+      </table>`;
+      
+      const result = cleanDescription(input);
+      
+      expect(result).toContain("{| class=\"wikitable\"");
+      expect(result).toContain("! Study");
+      expect(result).toContain("! Study Component");
+      expect(result).toContain("! Biosample");
+      expect(result).toContain("| Ultrastructure of the immune synapse");
+      expect(result).toContain("| Scanning Electron Microscopy");
+      expect(result).toContain("''Homo sapiens''");
+      expect(result).toContain("|}");
     });
   });
 
@@ -151,6 +238,34 @@ describe("cleanDescription", () => {
       expect(result).toContain("* '''Imaging method:''' Fluorescence microscopy");
       expect(result).toContain("''Drosophila melanogaster''");
       expect(result).toContain("'''publication'''");
+    });
+
+    it("handles mixed content with paragraphs and tables", () => {
+      const input = `<p>Image from the NFDI4BIOIMAGE Calendar September 2025.</p>
+<p>The scanning electron micrograph shows the approach of T-lymphocytes (Jurkat cells; cyan) to an antigen-presenting B cell (Raji cell; yellow) in the center.</p>
+<p>Image Metadata (using REMBI template):</p>
+<table>
+  <tr><th>Study</th></tr>
+  <tr><td>Study description</td></tr>
+  <tr><td>Ultrastructure of the immune synapse</td></tr>
+  <tr><th>Biosample</th></tr>
+  <tr><td>Biological entity</td></tr>
+  <tr><td>Jurkat cell line E6.1 and Raji B cell lymphoma cell line</td></tr>
+  <tr><td>Organism</td></tr>
+  <tr><td><em>Homo sapiens</em></td></tr>
+</table>`;
+
+      const result = cleanDescription(input);
+      
+      expect(result).toContain("Image from the NFDI4BIOIMAGE Calendar September 2025.");
+      expect(result).toContain("The scanning electron micrograph");
+      expect(result).toContain("Image Metadata (using REMBI template):");
+      expect(result).toContain("{| class=\"wikitable\"");
+      expect(result).toContain("! Study");
+      expect(result).toContain("| Ultrastructure of the immune synapse");
+      expect(result).toContain("! Biosample");
+      expect(result).toContain("''Homo sapiens''");
+      expect(result).toContain("|}");
     });
   });
 
