@@ -64,10 +64,7 @@ jobs:
         run: npm ci
 
       - name: Build with preview base path
-        run: |
-          # Temporarily modify vite.config.js to use preview path
-          sed -i "s|base: '/zenodo2commons/'|base: '/zenodo2commons/pr_preview/${{ github.event.number }}/'|" vite.config.js
-          npm run build
+        run: npm run build -- --base=/zenodo2commons/pr_preview/${{ github.event.number }}/
 
       - name: Create PR Comment (Deployment Started)
         uses: actions/github-script@v7
@@ -131,7 +128,9 @@ jobs:
       - name: Remove preview directory
         id: remove
         run: |
-          rm -rf pr_preview/${{ github.event.number }}
+          if [ -d "pr_preview/${{ github.event.number }}" ]; then
+            rm -rf pr_preview/${{ github.event.number }}
+          fi
           if [ -z "$(git status --porcelain)" ]; then
             echo "changed=false" >> "$GITHUB_OUTPUT"
           else
