@@ -1,3 +1,8 @@
+# NOTE: This workflow may be deprecated in favor of deploy-preview.yml
+# which handles both production deployment and PR previews using the gh-pages branch.
+# After verifying deploy-preview.yml works and changing GitHub Pages settings
+# to deploy from the gh-pages branch, this workflow can be removed.
+
 name: Deploy to GitHub Pages
 
 on:
