@@ -195,15 +195,6 @@ ${description}
         {#each record.files as file}
           {@const uploadUrl = buildUploadUrl(file, record)}
           <div class="file-card">
-            <div class="preview">
-              {#if file.type === "jpg" || file.type === "png" || file.type === "jpeg" || file.key.match(/\.(jpg|jpeg|png|gif|tiff|tif)$/i)}
-                <img src={file.links.self} alt={file.key} class="thumbnail" />
-              {:else if file.type === "pdf" || file.key.endsWith(".pdf")}
-                <div class="file-icon pdf">PDF</div>
-              {:else}
-                <div class="file-icon">FILE</div>
-              {/if}
-            </div>
             <div class="file-info">
               <div class="file-name" title={file.key}>{file.key}</div>
               <div class="file-size">
@@ -230,6 +221,14 @@ ${description}
     </div>
   {/if}
 </main>
+
+<footer>
+  <p>
+    Made by <a href="https://gerbi-gmb.de" target="_blank" rel="noopener noreferrer">German BioImaging</a> 
+    for <a href="https://zenodo.org/communities/nfdi4bioimage/records" target="_blank" rel="noopener noreferrer">NFDI4BIOIMAGE</a>.
+    Open source – <a href="https://github.com/lubianat/zenodo2commons" target="_blank" rel="noopener noreferrer">View source code</a>.
+  </p>
+</footer>
 
 <style>
   :global(body) {
@@ -437,32 +436,6 @@ ${description}
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
   }
 
-  .preview {
-    height: 150px;
-    background: #f1f5f9;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    overflow: hidden;
-    border-bottom: 1px solid #e2e8f0;
-  }
-
-  .thumbnail {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-  }
-
-  .file-icon {
-    font-size: 1.5rem;
-    font-weight: bold;
-    color: #cbd5e1;
-  }
-
-  .file-icon.pdf {
-    color: #ef4444;
-  }
-
   .file-info {
     padding: 1rem;
     flex: 1;
@@ -523,5 +496,27 @@ ${description}
       opacity: 1;
       transform: translateY(0);
     }
+  }
+
+  footer {
+    margin-top: 3rem;
+    padding: 2rem 0;
+    text-align: center;
+    border-top: 1px solid #e2e8f0;
+    color: #64748b;
+    font-size: 0.9rem;
+  }
+
+  footer p {
+    margin: 0;
+  }
+
+  footer a {
+    color: #3366cc;
+    text-decoration: none;
+  }
+
+  footer a:hover {
+    text-decoration: underline;
   }
 </style>
