@@ -84,7 +84,7 @@
   function buildUploadUrl(file, record) {
     const metadata = record.metadata;
     const title = metadata.title;
-    const description = cleanDescription(metadata.description);
+    const { description, tables } = cleanDescription(metadata.description);
     const date = metadata.publication_date;
     const authors = formatCreators(metadata.creators);
     const source = `https://zenodo.org/records/${record.id}`;
@@ -100,7 +100,7 @@
     const destFile = `${safeTitle}${fileExt}`;
 
     // Construct the Information template
-    const infoTemplate = `{{Information
+    let infoTemplate = `{{Information
 |description=${title}:
 ${description}
 |date=${date}
@@ -112,6 +112,11 @@ ${description}
 {{Zenodo|${record.id}}}
 [[Category:Media from Zenodo]]
 [[Category:Uploaded with zenodo2commons]]`;
+
+    // Append tables after the Information template if any exist
+    if (tables) {
+      infoTemplate += `\n\n${tables}`;
+    }
 
     // Use the correct Zenodo file URL format (not the API content endpoint)
     const fileUrl = `https://zenodo.org/records/${record.id}/files/${file.key}`;

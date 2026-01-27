@@ -3,22 +3,28 @@
  * 
  * This function preserves semantic formatting by converting HTML tags
  * to their WikiMarkup equivalents instead of just stripping them.
+ * Tables are extracted and returned separately to avoid nesting issues
+ * within MediaWiki templates.
  * 
  * @param {string} html - The HTML string to convert
- * @returns {string} - The converted WikiMarkup string
+ * @returns {{description: string, tables: string}} - Object with description text and extracted tables
  * 
  * @example
  * cleanDescription('<p>This is <strong>bold</strong> text</p>')
- * // Returns: "This is '''bold''' text"
+ * // Returns: { description: "This is '''bold''' text", tables: "" }
  */
 export function cleanDescription(html) {
-  if (!html) return "";
+  if (!html) return { description: "", tables: "" };
 
-  // 1. Convert HTML tables to WikiMarkup tables
-  let text = convertTablesToWikiMarkup(html);
+  // 1. Extract and convert tables to WikiMarkup, then remove them from the HTML
+  const extractedTables = [];
+  const htmlWithoutTables = html.replace(/<table[^>]*>.*?<\/table>/gis, (match) => {
+    extractedTables.push(match);
+    return ""; // Remove table from the main content
+  });
 
   // 2. Convert other HTML to WikiMarkup formatting
-  text = text
+  let text = htmlWithoutTables
     // Convert bold tags to WikiMarkup
     .replace(/<strong[^>]*>(.*?)<\/strong>/gi, "'''$1'''")
     .replace(/<b[^>]*>(.*?)<\/b>/gi, "'''$1'''")
@@ -57,55 +63,83 @@ export function cleanDescription(html) {
   }
 
   // 6. Cleanup whitespace
-  return text
+  const description = text
     .split("\n")
     .map((line) => line.trim())
     .filter((line) => line.length > 0) // Remove empty lines
     .join("\n");
+
+  // 7. Convert extracted tables to WikiMarkup
+  const tables = extractedTables
+    .map(tableHtml => convertTableToWikiMarkup(tableHtml))
+    .join("\n\n");
+
+  return { description, tables };
 }
 
 /**
- * Converts HTML tables to WikiMarkup table syntax.
+ * Converts a single HTML table to WikiMarkup table syntax.
  * 
- * @param {string} html - The HTML string containing tables
- * @returns {string} - The HTML with tables converted to WikiMarkup
+ * @param {string} tableHtml - The HTML table string
+ * @returns {string} - The WikiMarkup table string
  */
-function convertTablesToWikiMarkup(html) {
-  // Match complete table elements
-  return html.replace(/<table[^>]*>(.*?)<\/table>/gis, (match, tableContent) => {
-    let wikiTable = '\n{| class="wikitable"\n';
+function convertTableToWikiMarkup(tableHtml) {
+  let wikiTable = '{| class="wikitable"\n';
+  
+  // Extract table content
+  const tableContent = tableHtml.match(/<table[^>]*>(.*?)<\/table>/is);
+  if (!tableContent) return "";
+  
+  // Process table rows
+  const rows = tableContent[1].match(/<tr[^>]*>(.*?)<\/tr>/gis);
+  if (!rows) return "";
+  
+  rows.forEach((row, rowIndex) => {
+    // Extract th cells
+    const thCells = row.match(/<th[^>]*>.*?<\/th>/gis) || [];
+    // Extract td cells
+    const tdCells = row.match(/<td[^>]*>.*?<\/td>/gis) || [];
     
-    // Process table rows
-    const rows = tableContent.match(/<tr[^>]*>(.*?)<\/tr>/gis);
-    if (!rows) return match; // Return original if no rows found
+    if (thCells.length === 0 && tdCells.length === 0) return;
     
-    rows.forEach((row, rowIndex) => {
-      // Extract th cells
-      const thCells = row.match(/<th[^>]*>.*?<\/th>/gis) || [];
-      // Extract td cells
-      const tdCells = row.match(/<td[^>]*>.*?<\/td>/gis) || [];
-      
-      if (thCells.length === 0 && tdCells.length === 0) return;
-      
-      // Add row separator (except for first row)
-      if (rowIndex > 0) {
-        wikiTable += '|-\n';
-      }
-      
-      // Process header cells
-      thCells.forEach(cell => {
-        const content = cell.replace(/<th[^>]*>(.*?)<\/th>/is, '$1').trim();
-        wikiTable += '! ' + content + '\n';
-      });
-      
-      // Process data cells
-      tdCells.forEach(cell => {
-        const content = cell.replace(/<td[^>]*>(.*?)<\/td>/is, '$1').trim();
-        wikiTable += '| ' + content + '\n';
-      });
+    // Add row separator (except for first row)
+    if (rowIndex > 0) {
+      wikiTable += '|-\n';
+    }
+    
+    // Process header cells
+    thCells.forEach(cell => {
+      let content = cell.replace(/<th[^>]*>(.*?)<\/th>/is, '$1').trim();
+      content = convertInlineFormatting(content);
+      wikiTable += '! ' + content + '\n';
     });
     
-    wikiTable += '|}\n';
-    return wikiTable;
+    // Process data cells
+    tdCells.forEach(cell => {
+      let content = cell.replace(/<td[^>]*>(.*?)<\/td>/is, '$1').trim();
+      content = convertInlineFormatting(content);
+      wikiTable += '| ' + content + '\n';
+    });
   });
+  
+  wikiTable += '|}';
+  return wikiTable;
+}
+
+/**
+ * Converts inline HTML formatting to WikiMarkup.
+ * 
+ * @param {string} html - HTML string with inline formatting
+ * @returns {string} - String with WikiMarkup formatting
+ */
+function convertInlineFormatting(html) {
+  return html
+    // Convert bold tags to WikiMarkup
+    .replace(/<strong[^>]*>(.*?)<\/strong>/gi, "'''$1'''")
+    .replace(/<b[^>]*>(.*?)<\/b>/gi, "'''$1'''")
+    // Convert italic tags to WikiMarkup
+    .replace(/<em[^>]*>(.*?)<\/em>/gi, "''$1''")
+    .replace(/<i[^>]*>(.*?)<\/i>/gi, "''$1''")
+    // Strip any remaining tags
+    .replace(/<[^>]+>/g, "");
 }
