@@ -1,5 +1,6 @@
 <script>
   import { onMount } from "svelte";
+  import { cleanDescription } from "./utils/htmlToWiki.js";
 
   let zenodoId = "17607828";
   let record = null;
@@ -61,47 +62,6 @@
     // Zenodo license ID might be like "cc-by-4.0" or object
     const id = (zenodoLicenseId || "").toLowerCase();
     return licenseMap[id] || "";
-  }
-
-  function cleanDescription(html) {
-    if (!html) return "";
-
-    // 1. Convert HTML to WikiMarkup formatting
-    let text = html
-      // Convert bold tags to WikiMarkup
-      .replace(/<strong[^>]*>(.*?)<\/strong>/gi, "'''$1'''")
-      .replace(/<b[^>]*>(.*?)<\/b>/gi, "'''$1'''")
-      // Convert italic tags to WikiMarkup
-      .replace(/<em[^>]*>(.*?)<\/em>/gi, "''$1''")
-      .replace(/<i[^>]*>(.*?)<\/i>/gi, "''$1''")
-      // Structural replacements
-      .replace(/<\/td>\s*<td[^>]*>/gi, ": ") // Table cells to "Key: Value"
-      .replace(/<\/tr>/gi, "\n") // Table rows to newlines
-      .replace(/<\/p>/gi, "\n\n") // Paragraphs to double newlines
-      .replace(/<br\s*\/?>/gi, "\n") // Breaks to newlines
-      .replace(/<li[^>]*>/gi, "\n* "); // List items
-
-    // 2. Strip remaining tags (after WikiMarkup conversion)
-    text = text.replace(/<[^>]+>/g, "");
-
-    // 3. Remove empty wiki markup (multiple apostrophes with nothing between them)
-    text = text.replace(/'{2,}/g, (match) => {
-      // Keep valid wiki markup: '' (italic) or ''' (bold)
-      // But remove invalid patterns like '''' or longer sequences
-      if (match === "''" || match === "'''") return match;
-      return ""; // Remove other apostrophe sequences
-    });
-
-    // 4. Decode HTML entities using DOMParser
-    const doc = new DOMParser().parseFromString(text, "text/html");
-    text = doc.documentElement.textContent;
-
-    // 5. Cleanup whitespace
-    return text
-      .split("\n")
-      .map((line) => line.trim())
-      .filter((line) => line.length > 0) // Remove empty lines
-      .join("\n");
   }
 
   function normalizeOrcid(orcid) {
