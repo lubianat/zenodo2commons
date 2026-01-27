@@ -1,5 +1,6 @@
 <script>
   import { onMount } from "svelte";
+  import { cleanDescription } from "./utils/htmlToWiki.js";
 
   let zenodoId = "17607828";
   let record = null;
@@ -61,32 +62,6 @@
     // Zenodo license ID might be like "cc-by-4.0" or object
     const id = (zenodoLicenseId || "").toLowerCase();
     return licenseMap[id] || "";
-  }
-
-  function cleanDescription(html) {
-    if (!html) return "";
-
-    // 1. Structural replacements
-    let text = html
-      .replace(/<\/td>\s*<td[^>]*>/gi, ": ") // Table cells to "Key: Value"
-      .replace(/<\/tr>/gi, "\n") // Table rows to newlines
-      .replace(/<\/p>/gi, "\n\n") // Paragraphs to double newlines
-      .replace(/<br\s*\/?>/gi, "\n") // Breaks to newlines
-      .replace(/<li[^>]*>/gi, "\n* "); // List items
-
-    // 2. Strip remaining tags
-    text = text.replace(/<[^>]+>/g, "");
-
-    // 3. Decode HTML entities using DOMParser
-    const doc = new DOMParser().parseFromString(text, "text/html");
-    text = doc.documentElement.textContent;
-
-    // 4. Cleanup whitespace
-    return text
-      .split("\n")
-      .map((line) => line.trim())
-      .filter((line) => line.length > 0) // Remove empty lines
-      .join("\n");
   }
 
   function normalizeOrcid(orcid) {
