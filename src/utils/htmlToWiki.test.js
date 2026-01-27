@@ -157,6 +157,22 @@ describe("cleanDescription", () => {
       expect(result).toContain("''Homo sapiens''");
       expect(result).toContain("|}");
     });
+
+    it("handles mixed th and td cells in the same row", () => {
+      const input = `<table>
+        <tr><th>Name</th><td>John Doe</td></tr>
+        <tr><th>Age</th><td>30</td></tr>
+      </table>`;
+      
+      const result = cleanDescription(input);
+      
+      expect(result).toContain("{| class=\"wikitable\"");
+      expect(result).toContain("! Name");
+      expect(result).toContain("| John Doe");
+      expect(result).toContain("! Age");
+      expect(result).toContain("| 30");
+      expect(result).toContain("|}");
+    });
   });
 
   describe("HTML entities", () => {

@@ -80,29 +80,28 @@ function convertTablesToWikiMarkup(html) {
     if (!rows) return match; // Return original if no rows found
     
     rows.forEach((row, rowIndex) => {
-      // Check if this row contains header cells
-      const hasHeaders = /<th[^>]*>/i.test(row);
+      // Extract th cells
+      const thCells = row.match(/<th[^>]*>.*?<\/th>/gis) || [];
+      // Extract td cells
+      const tdCells = row.match(/<td[^>]*>.*?<\/td>/gis) || [];
       
-      // Extract cells (both th and td)
-      const cells = row.match(/<t[hd][^>]*>.*?<\/t[hd]>/gis);
-      if (!cells) return;
+      if (thCells.length === 0 && tdCells.length === 0) return;
       
       // Add row separator (except for first row)
       if (rowIndex > 0) {
         wikiTable += '|-\n';
       }
       
-      // Process each cell
-      cells.forEach(cell => {
-        // Extract cell content
-        const content = cell.replace(/<t[hd][^>]*>(.*?)<\/t[hd]>/is, '$1').trim();
-        
-        // Use ! for header cells, | for data cells
-        if (hasHeaders) {
-          wikiTable += '! ' + content + '\n';
-        } else {
-          wikiTable += '| ' + content + '\n';
-        }
+      // Process header cells
+      thCells.forEach(cell => {
+        const content = cell.replace(/<th[^>]*>(.*?)<\/th>/is, '$1').trim();
+        wikiTable += '! ' + content + '\n';
+      });
+      
+      // Process data cells
+      tdCells.forEach(cell => {
+        const content = cell.replace(/<td[^>]*>(.*?)<\/td>/is, '$1').trim();
+        wikiTable += '| ' + content + '\n';
       });
     });
     
