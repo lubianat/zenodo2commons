@@ -93,9 +93,11 @@
 
     if (!commonsLicense) return null;
 
-    // Truncate title for filename to avoid issues, but keep it descriptive
-    const safeTitle = title.replace(/[:\/\\?*|"><]/g, "").substring(0, 80);
-    const destFile = `${safeTitle} - ${file.key}`;
+    // Use resource title as the file title, with file extension
+    const safeTitle = title.replace(/[:\/\\?*|"><]/g, "").substring(0, 200);
+    // Extract file extension from the file key
+    const fileExt = file.key.includes('.') ? file.key.substring(file.key.lastIndexOf('.')) : '';
+    const destFile = `${safeTitle}${fileExt}`;
 
     // Construct the Information template
     const infoTemplate = `{{Information
@@ -108,14 +110,18 @@ ${description}
 |other versions=
 }}
 {{Zenodo|${record.id}}}
-[[Category:Media from Zenodo]]`;
+[[Category:Media from Zenodo]]
+[[Category:Uploaded with zenodo2commons]]`;
+
+    // Use the correct Zenodo file URL format (not the API content endpoint)
+    const fileUrl = `https://zenodo.org/records/${record.id}/files/${file.key}`;
 
     const params = new URLSearchParams({
       wpUploadDescription: infoTemplate,
       wpLicense: commonsLicense,
       wpDestFile: destFile,
       wpSourceType: "url",
-      wpUploadFileURL: file.links.self,
+      wpUploadFileURL: fileUrl,
     });
 
     return `https://commons.wikimedia.org/wiki/Special:Upload?${params.toString()}`;
