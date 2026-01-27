@@ -42,6 +42,10 @@ jobs:
           keep_files: true
 
   preview:
+    # Security note: This job uses pull_request_target and checks out untrusted code
+    # from PRs. This is intentional for preview deployments but requires the 'preview'
+    # label which can only be added by repository collaborators with write access.
+    # The build process is sandboxed and only static files are deployed.
     if: |
       github.event_name == 'pull_request_target' &&
       github.event.action != 'closed' &&

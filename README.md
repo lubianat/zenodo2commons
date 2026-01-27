@@ -79,6 +79,8 @@ Pull requests can be previewed before merging:
 
 This allows reviewers to test changes in a live environment before merging.
 
+**Security Note**: Only repository collaborators with write access can add the `preview` label. This ensures that preview deployments are only created from trusted sources.
+
 ## License
 
 This project is open source.
