@@ -79,7 +79,7 @@
       .map((creator) => {
         const name = creator.name || "";
         const orcid = normalizeOrcid(creator.orcid);
-        return orcid ? `${name} ({{ORCID|${orcid}}})` : name;
+        return orcid ? `${name} ([https://orcid.org/${orcid} ORCID: ${orcid}])` : name;
       })
       .filter((value) => value.length > 0)
       .join("; ");
