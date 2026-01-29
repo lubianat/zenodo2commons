@@ -206,15 +206,12 @@ ${description}
       </div>
 
       {#if record.metadata.description}
-        {@const { description } = cleanDescription(record.metadata.description)}
-        {#if description}
-          <div class="description-section">
-            <h3>Description</h3>
-            <div class="description-box">
-              {description}
-            </div>
+        <div class="description-section">
+          <h3>Description</h3>
+          <div class="description-box">
+            {@html record.metadata.description}
           </div>
-        {/if}
+        </div>
       {/if}
 
       <h3>Files ({record.files.length})</h3>
@@ -460,6 +457,9 @@ ${description}
     font-size: 0.95rem;
     line-height: 1.6;
     color: #333;
+    /* Standard scrollbar styling for Firefox */
+    scrollbar-width: thin;
+    scrollbar-color: #cbd5e0 #f1f1f1;
   }
 
   .description-box::-webkit-scrollbar {
