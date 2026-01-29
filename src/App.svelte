@@ -1,6 +1,7 @@
 <script>
   import { onMount } from "svelte";
   import { cleanDescription } from "./utils/htmlToWiki.js";
+  import { buildConstrainedUploadUrl } from "./utils/urlTrimmer.js";
 
   let zenodoId = "17607828";
   let record = null;
@@ -103,37 +104,22 @@
     const fileExt = file.key.includes('.') ? file.key.substring(file.key.lastIndexOf('.')) : '';
     const destFile = `${safeTitle}${fileExt}`;
 
-    // Construct the Information template
-    let infoTemplate = `{{Information
-|description=${title}:
-${description}
-|date=${date}
-|source=${source}
-|author=${authors}
-|permission=
-|other versions=
-}}
-{{Zenodo|${record.id}}}
-[[Category:Media from Zenodo]]
-[[Category:Uploaded with zenodo2commons]]`;
-
-    // Append tables after the Information template if any exist
-    if (tables) {
-      infoTemplate += `\n\n${tables}`;
-    }
-
     // Use the correct Zenodo file URL format (not the API content endpoint)
     const fileUrl = `https://zenodo.org/records/${record.id}/files/${file.key}`;
 
-    const params = new URLSearchParams({
-      wpUploadDescription: infoTemplate,
-      wpLicense: commonsLicense,
-      wpDestFile: destFile,
-      wpSourceType: "url",
-      wpUploadFileURL: fileUrl,
+    // Use the new URL trimmer utility that handles long URLs
+    return buildConstrainedUploadUrl({
+      title,
+      description,
+      tables,
+      date,
+      source,
+      authors,
+      recordId: record.id,
+      commonsLicense,
+      destFile,
+      fileUrl
     });
-
-    return `https://commons.wikimedia.org/wiki/Special:Upload?${params.toString()}`;
   }
 </script>
 
