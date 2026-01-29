@@ -6,6 +6,22 @@ import { describe, it, expect } from "vitest";
  * by checking the format that should be generated for Wikimedia Commons.
  */
 
+/**
+ * Helper function that replicates the formatCreators logic from App.svelte
+ * This allows us to test the expected behavior without exporting internal functions
+ */
+function testFormatCreators(creators) {
+  if (!Array.isArray(creators) || creators.length === 0) return "";
+  return creators
+    .map((creator) => {
+      const name = creator.name || "";
+      const orcid = creator.orcid ? creator.orcid.replace(/^https?:\/\/orcid\.org\//i, "").trim() : "";
+      return orcid ? `${name} ({{ORCID|${orcid}}})` : name;
+    })
+    .filter((value) => value.length > 0)
+    .join("; ");
+}
+
 describe("ORCID formatting for Wikimedia Commons", () => {
   describe("normalizeOrcid", () => {
     it("should remove https://orcid.org/ prefix", () => {
@@ -45,17 +61,7 @@ describe("ORCID formatting for Wikimedia Commons", () => {
         { name: "Miebach, Lea", orcid: "0000-0002-8773-8862" }
       ];
       const expected = "Miebach, Lea ({{ORCID|0000-0002-8773-8862}})";
-      
-      // Simulate the formatCreators function logic
-      const result = creators
-        .map((creator) => {
-          const name = creator.name || "";
-          const orcid = creator.orcid ? creator.orcid.replace(/^https?:\/\/orcid\.org\//i, "").trim() : "";
-          return orcid ? `${name} ({{ORCID|${orcid}}})` : name;
-        })
-        .join("; ");
-      
-      expect(result).toBe(expected);
+      expect(testFormatCreators(creators)).toBe(expected);
     });
 
     it("should format multiple creators with ORCIDs", () => {
@@ -64,16 +70,7 @@ describe("ORCID formatting for Wikimedia Commons", () => {
         { name: "Bekeschus, Sander", orcid: "0000-0001-7411-9299" }
       ];
       const expected = "Miebach, Lea ({{ORCID|0000-0002-8773-8862}}); Bekeschus, Sander ({{ORCID|0000-0001-7411-9299}})";
-      
-      const result = creators
-        .map((creator) => {
-          const name = creator.name || "";
-          const orcid = creator.orcid ? creator.orcid.replace(/^https?:\/\/orcid\.org\//i, "").trim() : "";
-          return orcid ? `${name} ({{ORCID|${orcid}}})` : name;
-        })
-        .join("; ");
-      
-      expect(result).toBe(expected);
+      expect(testFormatCreators(creators)).toBe(expected);
     });
 
     it("should handle creator without ORCID", () => {
@@ -81,16 +78,7 @@ describe("ORCID formatting for Wikimedia Commons", () => {
         { name: "Smith, John" }
       ];
       const expected = "Smith, John";
-      
-      const result = creators
-        .map((creator) => {
-          const name = creator.name || "";
-          const orcid = creator.orcid ? creator.orcid.replace(/^https?:\/\/orcid\.org\//i, "").trim() : "";
-          return orcid ? `${name} ({{ORCID|${orcid}}})` : name;
-        })
-        .join("; ");
-      
-      expect(result).toBe(expected);
+      expect(testFormatCreators(creators)).toBe(expected);
     });
 
     it("should handle mixed creators with and without ORCIDs", () => {
@@ -100,16 +88,7 @@ describe("ORCID formatting for Wikimedia Commons", () => {
         { name: "Bekeschus, Sander", orcid: "0000-0001-7411-9299" }
       ];
       const expected = "Miebach, Lea ({{ORCID|0000-0002-8773-8862}}); Smith, John; Bekeschus, Sander ({{ORCID|0000-0001-7411-9299}})";
-      
-      const result = creators
-        .map((creator) => {
-          const name = creator.name || "";
-          const orcid = creator.orcid ? creator.orcid.replace(/^https?:\/\/orcid\.org\//i, "").trim() : "";
-          return orcid ? `${name} ({{ORCID|${orcid}}})` : name;
-        })
-        .join("; ");
-      
-      expect(result).toBe(expected);
+      expect(testFormatCreators(creators)).toBe(expected);
     });
 
     it("should normalize ORCID URLs from Zenodo API", () => {
@@ -117,31 +96,13 @@ describe("ORCID formatting for Wikimedia Commons", () => {
         { name: "Miebach, Lea", orcid: "https://orcid.org/0000-0002-8773-8862" }
       ];
       const expected = "Miebach, Lea ({{ORCID|0000-0002-8773-8862}})";
-      
-      const result = creators
-        .map((creator) => {
-          const name = creator.name || "";
-          const orcid = creator.orcid ? creator.orcid.replace(/^https?:\/\/orcid\.org\//i, "").trim() : "";
-          return orcid ? `${name} ({{ORCID|${orcid}}})` : name;
-        })
-        .join("; ");
-      
-      expect(result).toBe(expected);
+      expect(testFormatCreators(creators)).toBe(expected);
     });
 
     it("should handle empty creators array", () => {
       const creators = [];
       const expected = "";
-      
-      const result = creators
-        .map((creator) => {
-          const name = creator.name || "";
-          const orcid = creator.orcid ? creator.orcid.replace(/^https?:\/\/orcid\.org\//i, "").trim() : "";
-          return orcid ? `${name} ({{ORCID|${orcid}}})` : name;
-        })
-        .join("; ");
-      
-      expect(result).toBe(expected);
+      expect(testFormatCreators(creators)).toBe(expected);
     });
   });
 });
