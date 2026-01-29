@@ -9,6 +9,15 @@
 // Conservative URL length limit (4KB instead of typical 8KB server limit)
 const MAX_URL_LENGTH = 4000;
 
+// Minimum viable table length - below this, tables are omitted entirely
+const MIN_TABLE_LENGTH = 100;
+
+// Percentage of remaining URL space to allocate to tables (vs description)
+const TABLE_SPACE_RATIO = 0.4;
+
+// Safety margin to account for URL encoding overhead and other factors
+const URL_ENCODING_MARGIN = 100;
+
 /**
  * Checks if a URL exceeds the maximum allowed length.
  * 
@@ -58,12 +67,12 @@ export function truncateTables(tables, maxLength) {
   
   // If still too long, truncate rows from the single/remaining table
   const truncationNote = '\n|}\n\n(Table truncated due to length constraints. See full metadata at source.)';
-  const noteLength = truncationNote.length;
   
   for (let i = lines.length - 2; i >= 0; i--) { // -2 to skip the closing |}
     if (lines[i] === '|-' || lines[i].startsWith('|') || lines[i].startsWith('!')) {
       const truncated = lines.slice(0, i).join('\n') + truncationNote;
-      if (truncated.length <= maxLength) {
+      // Verify we have a valid table opening
+      if (truncated.includes('{| class="wikitable"') && truncated.length <= maxLength) {
         return truncated;
       }
     }
@@ -71,7 +80,7 @@ export function truncateTables(tables, maxLength) {
   
   // If we can at least keep the table header
   const minTable = lines.slice(0, 2).join('\n') + truncationNote;
-  if (minTable.length <= maxLength) {
+  if (minTable.includes('{| class="wikitable"') && minTable.length <= maxLength) {
     return minTable;
   }
   
@@ -83,6 +92,10 @@ export function truncateTables(tables, maxLength) {
  * Truncates description text to fit within length constraints.
  * Tries to break at sentence or paragraph boundaries when possible.
  * 
+ * Note: Sentence detection uses a simple regex that may not handle
+ * abbreviations (like "Dr.", "etc.") correctly. This is acceptable
+ * since truncation is a fallback for extreme cases.
+ * 
  * @param {string} description - The description text
  * @param {number} maxLength - Maximum allowed length
  * @returns {string} - Truncated description with ellipsis if truncated
@@ -93,7 +106,6 @@ export function truncateDescription(description, maxLength) {
   }
   
   const truncationNote = '\n\n(Description truncated. See full description at source.)';
-  const noteLength = truncationNote.length;
   
   // Try to break at paragraph boundary
   const paragraphs = description.split('\n\n');
@@ -101,7 +113,7 @@ export function truncateDescription(description, maxLength) {
   
   for (const para of paragraphs) {
     const nextTruncated = truncated ? truncated + '\n\n' + para : para;
-    if (nextTruncated.length + noteLength > maxLength) {
+    if (nextTruncated.length + truncationNote.length > maxLength) {
       break;
     }
     truncated = nextTruncated;
@@ -112,6 +124,7 @@ export function truncateDescription(description, maxLength) {
   }
   
   // If no paragraphs fit, try sentence boundary
+  // Note: This regex doesn't handle abbreviations well, but is acceptable for truncation
   const sentences = description.match(/[^.!?]+[.!?]+/g) || [description];
   truncated = '';
   const ellipsisNote = '... (Description truncated. See full description at source.)';
@@ -222,12 +235,12 @@ ${desc}
       wpUploadFileURL: fileUrl,
     });
     const baseLength = (baseUrl + baseParams.toString()).length;
-    const remainingSpace = MAX_URL_LENGTH - baseLength;
+    const remainingSpace = MAX_URL_LENGTH - baseLength - URL_ENCODING_MARGIN;
     
-    // Reserve at least half the space for description
-    const maxTableLength = Math.min(tables.length, Math.floor(remainingSpace * 0.4));
+    // Reserve space for tables (40% of remaining space)
+    const maxTableLength = Math.min(tables.length, Math.floor(remainingSpace * TABLE_SPACE_RATIO));
     
-    if (maxTableLength > 100) {
+    if (maxTableLength > MIN_TABLE_LENGTH) {
       const truncatedTables = truncateTables(tables, maxTableLength);
       url = buildUrl(buildInfoTemplate(description, truncatedTables));
       
@@ -255,7 +268,7 @@ ${desc}
     wpUploadFileURL: fileUrl,
   });
   const minimalLength = (baseUrl + minimalParams.toString()).length;
-  const maxDescLength = MAX_URL_LENGTH - minimalLength - 100; // Safety margin
+  const maxDescLength = MAX_URL_LENGTH - minimalLength - URL_ENCODING_MARGIN;
   
   const truncatedDesc = truncateDescription(description, maxDescLength);
   return buildUrl(buildInfoTemplate(truncatedDesc, ''));
