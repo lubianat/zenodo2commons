@@ -3,7 +3,8 @@ import {
   isUrlTooLong,
   truncateTables,
   truncateDescription,
-  buildConstrainedUploadUrl
+  buildConstrainedUploadUrl,
+  buildFullMetadata
 } from "./urlTrimmer.js";
 
 describe("urlTrimmer", () => {
@@ -129,11 +130,12 @@ describe("urlTrimmer", () => {
     };
 
     it("returns URL with full content when not too long", () => {
-      const url = buildConstrainedUploadUrl(baseParams);
-      expect(url).toContain("https://commons.wikimedia.org/wiki/Special:Upload?");
-      expect(url).toContain("wpUploadDescription");
-      expect(url).toContain("Test+description"); // URLSearchParams uses + for spaces
-      expect(isUrlTooLong(url)).toBe(false);
+      const result = buildConstrainedUploadUrl(baseParams);
+      expect(result.url).toContain("https://commons.wikimedia.org/wiki/Special:Upload?");
+      expect(result.url).toContain("wpUploadDescription");
+      expect(result.url).toContain("Test+description"); // URLSearchParams uses + for spaces
+      expect(result.wasTruncated).toBe(false);
+      expect(isUrlTooLong(result.url)).toBe(false);
     });
 
     it("includes tables when URL is not too long", () => {
@@ -145,9 +147,10 @@ describe("urlTrimmer", () => {
 | Test study
 |}`
       };
-      const url = buildConstrainedUploadUrl(params);
-      expect(url).toContain("wikitable");
-      expect(isUrlTooLong(url)).toBe(false);
+      const result = buildConstrainedUploadUrl(params);
+      expect(result.url).toContain("wikitable");
+      expect(result.wasTruncated).toBe(false);
+      expect(isUrlTooLong(result.url)).toBe(false);
     });
 
     it("truncates tables when URL becomes too long", () => {
@@ -160,10 +163,11 @@ describe("urlTrimmer", () => {
         tables: longTables
       };
       
-      const url = buildConstrainedUploadUrl(params);
-      expect(isUrlTooLong(url)).toBe(false);
+      const result = buildConstrainedUploadUrl(params);
+      expect(isUrlTooLong(result.url)).toBe(false);
+      expect(result.wasTruncated).toBe(true);
       // URL should either have truncated tables or no tables
-      const hasFullTables = url.includes("Header 199");
+      const hasFullTables = result.url.includes("Header 199");
       expect(hasFullTables).toBe(false);
     });
 
@@ -179,8 +183,9 @@ describe("urlTrimmer", () => {
         tables: longTables
       };
       
-      const url = buildConstrainedUploadUrl(params);
-      expect(isUrlTooLong(url)).toBe(false);
+      const result = buildConstrainedUploadUrl(params);
+      expect(isUrlTooLong(result.url)).toBe(false);
+      expect(result.wasTruncated).toBe(true);
     });
 
     it("truncates description when necessary", () => {
@@ -191,9 +196,10 @@ describe("urlTrimmer", () => {
         description: veryLongDescription
       };
       
-      const url = buildConstrainedUploadUrl(params);
-      expect(isUrlTooLong(url)).toBe(false);
-      expect(url).toContain("truncated");
+      const result = buildConstrainedUploadUrl(params);
+      expect(isUrlTooLong(result.url)).toBe(false);
+      expect(result.wasTruncated).toBe(true);
+      expect(result.url).toContain("truncated");
     });
 
     it("handles extreme cases with both long description and tables", () => {
@@ -208,10 +214,11 @@ describe("urlTrimmer", () => {
         tables: longTables
       };
       
-      const url = buildConstrainedUploadUrl(params);
-      expect(isUrlTooLong(url)).toBe(false);
+      const result = buildConstrainedUploadUrl(params);
+      expect(isUrlTooLong(result.url)).toBe(false);
+      expect(result.wasTruncated).toBe(true);
       // Should have some content, but truncated
-      expect(url.length).toBeGreaterThan(500);
+      expect(result.url.length).toBeGreaterThan(500);
     });
 
     it("preserves essential information in all cases", () => {
@@ -226,15 +233,16 @@ describe("urlTrimmer", () => {
         tables: longTables
       };
       
-      const url = buildConstrainedUploadUrl(params);
+      const result = buildConstrainedUploadUrl(params);
       
       // Essential information should still be present
-      expect(url).toContain("wpUploadDescription");
-      expect(url).toContain("wpLicense=cc-by-4.0");
-      expect(url).toContain("wpDestFile=test.png");
-      expect(url).toContain("Information");
-      expect(url).toContain("Zenodo");
-      expect(isUrlTooLong(url)).toBe(false);
+      expect(result.url).toContain("wpUploadDescription");
+      expect(result.url).toContain("wpLicense=cc-by-4.0");
+      expect(result.url).toContain("wpDestFile=test.png");
+      expect(result.url).toContain("Information");
+      expect(result.url).toContain("Zenodo");
+      expect(result.wasTruncated).toBe(true);
+      expect(isUrlTooLong(result.url)).toBe(false);
     });
 
     it("handles real-world example structure", () => {
@@ -267,9 +275,54 @@ The image is a visualization showing the integration of multimodal data includin
         tables: realWorldTables
       };
 
-      const url = buildConstrainedUploadUrl(params);
-      expect(isUrlTooLong(url)).toBe(false);
-      expect(url).toContain("NFDI4BIOIMAGE");
+      const result = buildConstrainedUploadUrl(params);
+      expect(isUrlTooLong(result.url)).toBe(false);
+      expect(result.url).toContain("NFDI4BIOIMAGE");
+    });
+  });
+
+  describe("buildFullMetadata", () => {
+    it("builds complete metadata without truncation", () => {
+      const params = {
+        title: "Test Record",
+        description: "Test description with details",
+        tables: `{| class="wikitable"
+! Study
+|-
+| Test study
+|}`,
+        date: "2025-01-15",
+        source: "https://zenodo.org/records/12345",
+        authors: "John Doe",
+        recordId: "12345"
+      };
+
+      const metadata = buildFullMetadata(params);
+      expect(metadata).toContain("{{Information");
+      expect(metadata).toContain("Test description with details");
+      expect(metadata).toContain("wikitable");
+      expect(metadata).toContain("{{Zenodo|12345}}");
+      expect(metadata).toContain("[[Category:Media from Zenodo]]");
+    });
+
+    it("includes all tables regardless of length", () => {
+      const longTables = `{| class="wikitable"\n` + 
+        Array(200).fill(0).map((_, i) => `! Header ${i}\n|-\n| Value ${i}`).join('\n') + 
+        '\n|}';
+
+      const params = {
+        title: "Test",
+        description: "Description",
+        tables: longTables,
+        date: "2025-01-15",
+        source: "https://zenodo.org/records/12345",
+        authors: "John Doe",
+        recordId: "12345"
+      };
+
+      const metadata = buildFullMetadata(params);
+      expect(metadata).toContain("Header 199"); // Last table header
+      expect(metadata).toContain("Value 199"); // Last table value
     });
   });
 });

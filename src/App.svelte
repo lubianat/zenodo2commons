@@ -1,7 +1,7 @@
 <script>
   import { onMount } from "svelte";
   import { cleanDescription } from "./utils/htmlToWiki.js";
-  import { buildConstrainedUploadUrl } from "./utils/urlTrimmer.js";
+  import { buildConstrainedUploadUrl, buildFullMetadata } from "./utils/urlTrimmer.js";
 
   let zenodoId = "17607828";
   let record = null;
@@ -108,7 +108,7 @@
     const fileUrl = `https://zenodo.org/records/${record.id}/files/${file.key}`;
 
     // Use the new URL trimmer utility that handles long URLs
-    return buildConstrainedUploadUrl({
+    const result = buildConstrainedUploadUrl({
       title,
       description,
       tables,
@@ -120,6 +120,37 @@
       destFile,
       fileUrl
     });
+    
+    return result;
+  }
+
+  function getFullMetadata(file, record) {
+    const metadata = record.metadata;
+    const title = metadata.title;
+    const { description, tables } = cleanDescription(metadata.description);
+    const date = metadata.publication_date;
+    const authors = formatCreators(metadata.creators);
+    const source = `https://zenodo.org/records/${record.id}`;
+
+    return buildFullMetadata({
+      title,
+      description,
+      tables,
+      date,
+      source,
+      authors,
+      recordId: record.id
+    });
+  }
+
+  async function copyToClipboard(text) {
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch (err) {
+      console.error('Failed to copy:', err);
+      return false;
+    }
   }
 </script>
 
@@ -203,7 +234,8 @@
       <h3>Files ({record.files.length})</h3>
       <div class="files-grid">
         {#each record.files as file}
-          {@const uploadUrl = buildUploadUrl(file, record)}
+          {@const uploadResult = buildUploadUrl(file, record)}
+          {@const fullMetadata = getFullMetadata(file, record)}
           <div class="file-card">
             <div class="file-info">
               <div class="file-name" title={file.key}>{file.key}</div>
@@ -212,10 +244,39 @@
               </div>
             </div>
             <div class="actions">
-              {#if uploadUrl}
-                <a href={uploadUrl} target="_blank" class="upload-btn">
-                  Upload to Commons
-                </a>
+              {#if uploadResult}
+                <div class="action-buttons">
+                  <a href={uploadResult.url} target="_blank" class="upload-btn">
+                    Upload to Commons
+                  </a>
+                  {#if uploadResult.wasTruncated}
+                    <button
+                      class="warning-icon"
+                      title="Metadata was truncated to fit URL limits. Use the copy button to get full metadata."
+                      aria-label="Warning: Metadata truncated"
+                    >
+                      !
+                    </button>
+                  {/if}
+                  <button
+                    class="copy-btn"
+                    title="Copy full WikiMarkup metadata to clipboard"
+                    on:click={async () => {
+                      const success = await copyToClipboard(fullMetadata);
+                      if (success) {
+                        // Show a temporary success message
+                        const btn = event.target;
+                        const originalText = btn.textContent;
+                        btn.textContent = '✓';
+                        setTimeout(() => {
+                          btn.textContent = originalText;
+                        }, 2000);
+                      }
+                    }}
+                  >
+                    Copy
+                  </button>
+                </div>
               {:else}
                 <span
                   class="no-license"
@@ -510,11 +571,17 @@
   .actions {
     padding: 1rem;
     border-top: 1px solid #e2e8f0;
-    text-align: center;
+  }
+
+  .action-buttons {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    justify-content: center;
   }
 
   .upload-btn {
-    display: block;
+    flex: 1;
     background-color: #3366cc;
     color: white;
     padding: 0.6rem;
@@ -523,10 +590,58 @@
     font-size: 0.9rem;
     font-weight: 500;
     transition: background-color 0.2s;
+    text-align: center;
   }
 
   .upload-btn:hover {
     background-color: #254b99;
+  }
+
+  .warning-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    background-color: #ef4444;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    font-size: 1rem;
+    font-weight: bold;
+    cursor: help;
+    flex-shrink: 0;
+    transition: background-color 0.2s;
+  }
+
+  .warning-icon:hover {
+    background-color: #dc2626;
+  }
+
+  .copy-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 60px;
+    height: 32px;
+    background-color: #10b981;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: background-color 0.2s;
+    padding: 0 0.75rem;
+  }
+
+  .copy-btn:hover {
+    background-color: #059669;
+  }
+
+  .copy-btn:active {
+    transform: scale(0.95);
   }
 
   .no-license {
@@ -534,6 +649,7 @@
     font-size: 0.9rem;
     font-style: italic;
     cursor: not-allowed;
+    text-align: center;
   }
 
   .fade-in {

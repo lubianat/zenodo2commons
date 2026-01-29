@@ -150,6 +150,51 @@ export function truncateDescription(description, maxLength) {
 }
 
 /**
+ * Builds the full WikiMarkup metadata without URL length constraints.
+ * This is the metadata that would be used if URL size limits were infinite.
+ * 
+ * @param {Object} params - Parameters object
+ * @param {string} params.title - Record title
+ * @param {string} params.description - Cleaned description text
+ * @param {string} params.tables - WikiMarkup tables
+ * @param {string} params.date - Publication date
+ * @param {string} params.source - Source URL
+ * @param {string} params.authors - Author string
+ * @param {string} params.recordId - Zenodo record ID
+ * @returns {string} - Full WikiMarkup metadata
+ */
+export function buildFullMetadata(params) {
+  const {
+    title,
+    description,
+    tables,
+    date,
+    source,
+    authors,
+    recordId
+  } = params;
+  
+  let template = `{{Information
+|description=${title}:
+${description}
+|date=${date}
+|source=${source}
+|author=${authors}
+|permission=
+|other versions=
+}}
+{{Zenodo|${recordId}}}
+[[Category:Media from Zenodo]]
+[[Category:Uploaded with zenodo2commons]]`;
+  
+  if (tables) {
+    template += `\n\n${tables}`;
+  }
+  
+  return template;
+}
+
+/**
  * Builds metadata that fits within URL length constraints.
  * Progressively truncates tables and description as needed.
  * 
@@ -164,7 +209,7 @@ export function truncateDescription(description, maxLength) {
  * @param {string} params.commonsLicense - Commons license identifier
  * @param {string} params.destFile - Destination filename
  * @param {string} params.fileUrl - File URL
- * @returns {string} - Upload URL
+ * @returns {{url: string, wasTruncated: boolean}} - Upload URL and truncation flag
  */
 export function buildConstrainedUploadUrl(params) {
   const {
@@ -219,7 +264,7 @@ ${desc}
   let url = buildUrl(buildInfoTemplate(description, tables));
   
   if (!isUrlTooLong(url)) {
-    return url;
+    return { url, wasTruncated: false };
   }
   
   // If URL is too long, progressively truncate
@@ -245,7 +290,7 @@ ${desc}
       url = buildUrl(buildInfoTemplate(description, truncatedTables));
       
       if (!isUrlTooLong(url)) {
-        return url;
+        return { url, wasTruncated: true };
       }
     }
   }
@@ -254,7 +299,7 @@ ${desc}
   url = buildUrl(buildInfoTemplate(description, ''));
   
   if (!isUrlTooLong(url)) {
-    return url;
+    return { url, wasTruncated: true };
   }
   
   // Strategy 3: Truncate description too
@@ -271,5 +316,5 @@ ${desc}
   const maxDescLength = MAX_URL_LENGTH - minimalLength - URL_ENCODING_MARGIN;
   
   const truncatedDesc = truncateDescription(description, maxDescLength);
-  return buildUrl(buildInfoTemplate(truncatedDesc, ''));
+  return { url: buildUrl(buildInfoTemplate(truncatedDesc, '')), wasTruncated: true };
 }
