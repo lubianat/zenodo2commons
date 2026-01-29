@@ -23,7 +23,7 @@ function testFormatCreators(creators) {
 }
 
 describe("ORCID formatting for Wikimedia Commons", () => {
-  describe("normalizeOrcid", () => {
+  describe("ORCID URL normalization", () => {
     it("should remove https://orcid.org/ prefix", () => {
       const input = "https://orcid.org/0000-0002-8773-8862";
       const expected = "0000-0002-8773-8862";
@@ -43,9 +43,10 @@ describe("ORCID formatting for Wikimedia Commons", () => {
       expect(input.replace(/^https?:\/\/orcid\.org\//i, "").trim()).toBe(expected);
     });
 
-    it("should handle empty or null ORCID", () => {
-      const emptyResult = ("" || "").replace(/^https?:\/\/orcid\.org\//i, "").trim();
-      expect(emptyResult).toBe("");
+    it("should handle empty, null, or undefined ORCID", () => {
+      expect(("" || "").replace(/^https?:\/\/orcid\.org\//i, "").trim()).toBe("");
+      expect((null || "").replace(/^https?:\/\/orcid\.org\//i, "").trim()).toBe("");
+      expect((undefined || "").replace(/^https?:\/\/orcid\.org\//i, "").trim()).toBe("");
     });
 
     it("should be case insensitive for orcid.org domain", () => {
