@@ -6,6 +6,7 @@
   let record = null;
   let error = null;
   let loading = false;
+  let useFilenameInTitle = false; // Option to use filename instead of record title
 
   const licenseMap = {
     "cc-by-4.0": "cc-by-4.0",
@@ -97,15 +98,28 @@
 
     if (!commonsLicense) return null;
 
-    // Use resource title as the file title, with file extension
-    const safeTitle = title.replace(/[:\/\\?*|"><]/g, "").substring(0, 200);
-    // Extract file extension from the file key
-    const fileExt = file.key.includes('.') ? file.key.substring(file.key.lastIndexOf('.')) : '';
-    const destFile = `${safeTitle}${fileExt}`;
+    // Determine destination filename based on useFilenameInTitle option
+    let destFile;
+    let descriptionTitle;
+    
+    if (useFilenameInTitle) {
+      // Use the filename directly, removing extension and sanitizing
+      const fileNameWithoutExt = file.key.includes('.') ? file.key.substring(0, file.key.lastIndexOf('.')) : file.key;
+      const safeFileName = fileNameWithoutExt.replace(/[:\/\\?*|"><]/g, "").substring(0, 200);
+      const fileExt = file.key.includes('.') ? file.key.substring(file.key.lastIndexOf('.')) : '';
+      destFile = `${safeFileName}${fileExt}`;
+      descriptionTitle = fileNameWithoutExt;
+    } else {
+      // Use resource title as the file title, with file extension
+      const safeTitle = title.replace(/[:\/\\?*|"><]/g, "").substring(0, 200);
+      const fileExt = file.key.includes('.') ? file.key.substring(file.key.lastIndexOf('.')) : '';
+      destFile = `${safeTitle}${fileExt}`;
+      descriptionTitle = title;
+    }
 
     // Construct the Information template
     let infoTemplate = `{{Information
-|description=${title}:
+|description=${descriptionTitle}:
 ${description}
 |date=${date}
 |source=${source}
@@ -214,7 +228,16 @@ ${description}
         </div>
       {/if}
 
-      <h3>Files ({record.files.length})</h3>
+      <div class="files-header">
+        <h3>Files ({record.files.length})</h3>
+        <label class="filename-option">
+          <input 
+            type="checkbox" 
+            bind:checked={useFilenameInTitle}
+          />
+          <span>Use filename as title</span>
+        </label>
+      </div>
       <div class="files-grid">
         {#each record.files as file}
           {@const uploadUrl = buildUploadUrl(file, record)}
@@ -443,6 +466,37 @@ ${description}
 
   .description-section h3 {
     margin-bottom: 0.75rem;
+  }
+
+  .files-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+  }
+
+  .files-header h3 {
+    margin-bottom: 0;
+  }
+
+  .filename-option {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+    user-select: none;
+    font-size: 0.95rem;
+    color: #4a5568;
+  }
+
+  .filename-option input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+  }
+
+  .filename-option span {
+    font-weight: 500;
   }
 
   .description-box {
