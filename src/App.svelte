@@ -19,11 +19,16 @@
 
   onMount(() => {
     // Load dark mode preference from localStorage
-    const savedDarkMode = localStorage.getItem('darkMode');
-    if (savedDarkMode !== null) {
-      darkMode = savedDarkMode === 'true';
-    } else {
-      // Check system preference
+    try {
+      const savedDarkMode = localStorage.getItem('darkMode');
+      if (savedDarkMode !== null) {
+        darkMode = savedDarkMode === 'true';
+      } else {
+        // Check system preference
+        darkMode = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      }
+    } catch (e) {
+      // localStorage may fail in private browsing mode
       darkMode = window.matchMedia('(prefers-color-scheme: dark)').matches;
     }
     applyDarkMode();
@@ -43,7 +48,11 @@
 
   function toggleDarkMode() {
     darkMode = !darkMode;
-    localStorage.setItem('darkMode', darkMode.toString());
+    try {
+      localStorage.setItem('darkMode', darkMode.toString());
+    } catch (e) {
+      // localStorage may fail in private browsing mode or quota exceeded
+    }
     applyDarkMode();
   }
 
@@ -334,7 +343,6 @@ ${description}
     justify-content: center;
     align-items: center;
     gap: 1rem;
-    position: relative;
   }
 
   h1 {
@@ -358,8 +366,6 @@ ${description}
     align-items: center;
     justify-content: center;
     transition: background-color 0.2s;
-    position: absolute;
-    right: -3rem;
   }
 
   .dark-mode-toggle:hover {
