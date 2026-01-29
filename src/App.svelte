@@ -191,6 +191,15 @@
         </div>
       </div>
 
+      {#if record.metadata.description}
+        <div class="description-section">
+          <h3>Description</h3>
+          <div class="description-box">
+            {@html record.metadata.description}
+          </div>
+        </div>
+      {/if}
+
       <h3>Files ({record.files.length})</h3>
       <div class="files-grid">
         {#each record.files as file}
@@ -412,6 +421,49 @@
   h3 {
     margin-bottom: 1rem;
     color: #4a5568;
+  }
+
+  .description-section {
+    margin-bottom: 2rem;
+  }
+
+  .description-section h3 {
+    margin-bottom: 0.75rem;
+  }
+
+  .description-box {
+    background: #f8f9fa;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 1rem;
+    max-height: 200px;
+    overflow-y: auto;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    font-size: 0.95rem;
+    line-height: 1.6;
+    color: #333;
+    /* Standard scrollbar styling for Firefox */
+    scrollbar-width: thin;
+    scrollbar-color: #cbd5e0 #f1f1f1;
+  }
+
+  .description-box::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  .description-box::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+  }
+
+  .description-box::-webkit-scrollbar-thumb {
+    background: #cbd5e0;
+    border-radius: 4px;
+  }
+
+  .description-box::-webkit-scrollbar-thumb:hover {
+    background: #a0aec0;
   }
 
   .files-grid {
