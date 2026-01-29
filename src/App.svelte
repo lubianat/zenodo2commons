@@ -420,7 +420,7 @@ ${description}
   }
 
   :global(body.dark-mode) input::placeholder {
-    color: #808080;
+    color: #9ca3af;
   }
 
   .primary-btn {
