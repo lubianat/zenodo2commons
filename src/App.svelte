@@ -18,6 +18,10 @@
 
   onMount(() => {
     const path = window.location.pathname;
+    // Skip PR preview paths (e.g., /pr_preview/17) to avoid conflict with Zenodo IDs
+    if (path.includes('/pr_preview/')) {
+      return;
+    }
     // Check if path contains a numeric ID (e.g. /17607828)
     const match = path.match(/\/(\d+)/);
     if (match) {
