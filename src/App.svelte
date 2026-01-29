@@ -102,17 +102,18 @@
     let destFile;
     let descriptionTitle;
     
+    // Extract file extension once
+    const fileExt = file.key.includes('.') ? file.key.substring(file.key.lastIndexOf('.')) : '';
+    
     if (useFilenameInTitle) {
       // Use the filename directly, removing extension and sanitizing
       const fileNameWithoutExt = file.key.includes('.') ? file.key.substring(0, file.key.lastIndexOf('.')) : file.key;
       const safeFileName = fileNameWithoutExt.replace(/[:\/\\?*|"><]/g, "").substring(0, 200);
-      const fileExt = file.key.includes('.') ? file.key.substring(file.key.lastIndexOf('.')) : '';
       destFile = `${safeFileName}${fileExt}`;
-      descriptionTitle = fileNameWithoutExt;
+      descriptionTitle = safeFileName; // Use sanitized filename
     } else {
       // Use resource title as the file title, with file extension
       const safeTitle = title.replace(/[:\/\\?*|"><]/g, "").substring(0, 200);
-      const fileExt = file.key.includes('.') ? file.key.substring(file.key.lastIndexOf('.')) : '';
       destFile = `${safeTitle}${fileExt}`;
       descriptionTitle = title;
     }
