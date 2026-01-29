@@ -44,8 +44,9 @@ npm run test:watch # Run tests in watch mode
 - Follow existing code structure and naming patterns
 
 ### Svelte-Specific Guidelines
-- This project uses Svelte 5 with the new runes API
-- Use `$state`, `$derived`, and other runes for reactivity
+- This project uses Svelte 5 but follows traditional Svelte reactivity patterns
+- Use `let` variables for reactive state (not runes)
+- Use lifecycle functions like `onMount` from "svelte"
 - Keep components focused and maintainable
 - Follow the existing component structure in `src/App.svelte`
 
