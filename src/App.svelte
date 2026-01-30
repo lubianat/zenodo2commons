@@ -7,6 +7,7 @@
   let record = null;
   let error = null;
   let loading = false;
+  let darkMode = false;
 
   const licenseMap = {
     "cc-by-4.0": "cc-by-4.0",
@@ -18,6 +19,21 @@
   };
 
   onMount(() => {
+    // Load dark mode preference from localStorage
+    try {
+      const savedDarkMode = localStorage.getItem('darkMode');
+      if (savedDarkMode !== null) {
+        darkMode = savedDarkMode === 'true';
+      } else {
+        // Check system preference
+        darkMode = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      }
+    } catch (e) {
+      // localStorage may fail in private browsing mode
+      darkMode = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    }
+    applyDarkMode();
+
     const path = window.location.pathname;
     // Handle PR preview paths (e.g., /pr_preview/27/16979744)
     // Extract the Zenodo ID even when in a PR preview
@@ -35,6 +51,24 @@
       fetchZenodoRecord();
     }
   });
+
+  function toggleDarkMode() {
+    darkMode = !darkMode;
+    try {
+      localStorage.setItem('darkMode', darkMode.toString());
+    } catch (e) {
+      // localStorage may fail in private browsing mode or quota exceeded
+    }
+    applyDarkMode();
+  }
+
+  function applyDarkMode() {
+    if (darkMode) {
+      document.body.classList.add('dark-mode');
+    } else {
+      document.body.classList.remove('dark-mode');
+    }
+  }
 
   function getBasePath() {
     const baseUrl = import.meta.env.BASE_URL || "/";
@@ -94,7 +128,7 @@
       .map((creator) => {
         const name = creator.name || "";
         const orcid = normalizeOrcid(creator.orcid);
-        return orcid ? `${name} (ORCID: ${orcid})` : name;
+        return orcid ? `${name} ({{ORCID|${orcid}}})` : name;
       })
       .filter((value) => value.length > 0)
       .join("; ");
@@ -170,7 +204,21 @@
 
 <main>
   <header>
-    <h1>Zenodo to Commons</h1>
+    <div class="header-content">
+      <h1>Zenodo to Commons</h1>
+      <button
+        class="dark-mode-toggle"
+        on:click={toggleDarkMode}
+        aria-label="Toggle dark mode"
+        title={darkMode ? "Switch to light mode" : "Switch to dark mode"}
+      >
+        {#if darkMode}
+          ☀️
+        {:else}
+          🌙
+        {/if}
+      </button>
+    </div>
     <p class="subtitle">
       Easily upload open-access files from Zenodo to Wikimedia Commons.
     </p>
@@ -332,6 +380,12 @@
       "Open Sans",
       "Helvetica Neue",
       sans-serif;
+    transition: background-color 0.3s, color 0.3s;
+  }
+
+  :global(body.dark-mode) {
+    background-color: #1a1a1a;
+    color: #e0e0e0;
   }
 
   main {
@@ -345,15 +399,51 @@
     margin-bottom: 3rem;
   }
 
+  .header-content {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 1rem;
+  }
+
   h1 {
     font-size: 2.5rem;
     margin-bottom: 0.5rem;
     color: #2c3e50;
   }
 
+  :global(body.dark-mode) h1 {
+    color: #e0e0e0;
+  }
+
+  .dark-mode-toggle {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    padding: 0.5rem;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.2s;
+  }
+
+  .dark-mode-toggle:hover {
+    background-color: rgba(0, 0, 0, 0.1);
+  }
+
+  :global(body.dark-mode) .dark-mode-toggle:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+  }
+
   .subtitle {
     color: #666;
     font-size: 1.1rem;
+  }
+
+  :global(body.dark-mode) .subtitle {
+    color: #a0a0a0;
   }
 
   .search-container {
@@ -371,6 +461,12 @@
     border: 1px solid #e1e4e8;
   }
 
+  :global(body.dark-mode) .input-group {
+    background: #2d2d2d;
+    border-color: #404040;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  }
+
   input {
     flex: 1;
     padding: 0.8rem;
@@ -378,6 +474,14 @@
     border: none;
     outline: none;
     background: transparent;
+  }
+
+  :global(body.dark-mode) input {
+    color: #e0e0e0;
+  }
+
+  :global(body.dark-mode) input::placeholder {
+    color: #9ca3af;
   }
 
   .primary-btn {
@@ -411,11 +515,22 @@
     border: 1px solid #fcc;
   }
 
+  :global(body.dark-mode) .error-message {
+    background-color: #3d1a1a;
+    color: #ff6b6b;
+    border-color: #5d2a2a;
+  }
+
   .record-card {
     background: white;
     border-radius: 12px;
     padding: 2rem;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  }
+
+  :global(body.dark-mode) .record-card {
+    background: #2d2d2d;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
   }
 
   .record-header {
@@ -427,12 +542,20 @@
     padding-bottom: 1rem;
   }
 
+  :global(body.dark-mode) .record-header {
+    border-bottom-color: #404040;
+  }
+
   .record-header h2 {
     margin: 0;
     font-size: 1.5rem;
     color: #2c3e50;
     flex: 1;
     margin-right: 1rem;
+  }
+
+  :global(body.dark-mode) .record-header h2 {
+    color: #e0e0e0;
   }
 
   .zenodo-link {
@@ -456,6 +579,10 @@
     border-radius: 8px;
   }
 
+  :global(body.dark-mode) .record-meta {
+    background: #252525;
+  }
+
   .meta-item {
     display: flex;
     flex-direction: column;
@@ -470,9 +597,17 @@
     font-weight: 600;
   }
 
+  :global(body.dark-mode) .label {
+    color: #a0a0a0;
+  }
+
   .value {
     font-size: 1rem;
     color: #333;
+  }
+
+  :global(body.dark-mode) .value {
+    color: #e0e0e0;
   }
 
   .badge {
@@ -488,14 +623,28 @@
     color: #047857;
   }
 
+  :global(body.dark-mode) .badge.green {
+    background-color: #1a4d3d;
+    color: #6ee7b7;
+  }
+
   .badge.red {
     background-color: #fef2f2;
     color: #b91c1c;
   }
 
+  :global(body.dark-mode) .badge.red {
+    background-color: #4d1a1a;
+    color: #fca5a5;
+  }
+
   h3 {
     margin-bottom: 1rem;
     color: #4a5568;
+  }
+
+  :global(body.dark-mode) h3 {
+    color: #c0c0c0;
   }
 
   .description-section {
@@ -523,6 +672,13 @@
     scrollbar-color: #cbd5e0 #f1f1f1;
   }
 
+  :global(body.dark-mode) .description-box {
+    background: #252525;
+    border-color: #404040;
+    color: #e0e0e0;
+    scrollbar-color: #4a4a4a #2d2d2d;
+  }
+
   .description-box::-webkit-scrollbar {
     width: 8px;
   }
@@ -532,13 +688,25 @@
     border-radius: 4px;
   }
 
+  :global(body.dark-mode) .description-box::-webkit-scrollbar-track {
+    background: #2d2d2d;
+  }
+
   .description-box::-webkit-scrollbar-thumb {
     background: #cbd5e0;
     border-radius: 4px;
   }
 
+  :global(body.dark-mode) .description-box::-webkit-scrollbar-thumb {
+    background: #4a4a4a;
+  }
+
   .description-box::-webkit-scrollbar-thumb:hover {
     background: #a0aec0;
+  }
+
+  :global(body.dark-mode) .description-box::-webkit-scrollbar-thumb:hover {
+    background: #606060;
   }
 
   .files-grid {
@@ -559,9 +727,18 @@
     flex-direction: column;
   }
 
+  :global(body.dark-mode) .file-card {
+    background: #2d2d2d;
+    border-color: #404040;
+  }
+
   .file-card:hover {
     transform: translateY(-2px);
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+  }
+
+  :global(body.dark-mode) .file-card:hover {
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
   }
 
   .file-info {
@@ -577,9 +754,17 @@
     text-overflow: ellipsis;
   }
 
+  :global(body.dark-mode) .file-name {
+    color: #e0e0e0;
+  }
+
   .file-size {
     font-size: 0.85rem;
     color: #64748b;
+  }
+
+  :global(body.dark-mode) .file-size {
+    color: #a0a0a0;
   }
 
   .actions {
@@ -592,6 +777,10 @@
     gap: 0.5rem;
     align-items: center;
     justify-content: center;
+  }
+
+  :global(body.dark-mode) .actions {
+    border-top-color: #404040;
   }
 
   .upload-btn {
@@ -666,6 +855,10 @@
     text-align: center;
   }
 
+  :global(body.dark-mode) .no-license {
+    color: #6b7280;
+  }
+
   .fade-in {
     animation: fadeIn 0.5s ease-out;
   }
@@ -688,6 +881,11 @@
     border-top: 1px solid #e2e8f0;
     color: #64748b;
     font-size: 0.9rem;
+  }
+
+  :global(body.dark-mode) footer {
+    border-top-color: #404040;
+    color: #a0a0a0;
   }
 
   footer p {
