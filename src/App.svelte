@@ -20,7 +20,7 @@
   onMount(() => {
     const path = window.location.pathname;
     // Skip PR preview paths (e.g., /pr_preview/17) to avoid conflict with Zenodo IDs
-    if (path.includes('/pr_preview/')) {
+    if (path.includes("/pr_preview/")) {
       return;
     }
     // Check if path contains a numeric ID (e.g. /17607828)
@@ -101,16 +101,22 @@
     // Determine destination filename based on useFilenameInTitle option
     let destFile;
     let descriptionTitle;
-    
+
     // Extract file extension once
-    const fileExt = file.key.includes('.') ? file.key.substring(file.key.lastIndexOf('.')) : '';
-    
+    const fileExt = file.key.includes(".")
+      ? file.key.substring(file.key.lastIndexOf("."))
+      : "";
+
     if (useFilenameInTitle) {
       // Use the filename directly, removing extension and sanitizing
-      const fileNameWithoutExt = file.key.includes('.') ? file.key.substring(0, file.key.lastIndexOf('.')) : file.key;
-      const safeFileName = fileNameWithoutExt.replace(/[:\/\\?*|"><]/g, "").substring(0, 200);
-      destFile = `${safeFileName}${fileExt}`;
-      descriptionTitle = safeFileName; // Use sanitized filename
+      const fileNameWithoutExt = file.key.includes(".")
+        ? file.key.substring(0, file.key.lastIndexOf("."))
+        : file.key;
+      const safeFileName = fileNameWithoutExt
+        .replace(/[:\/\\?*|"><]/g, "")
+        .substring(0, 200);
+      destFile = `${title} - ${safeFileName}${fileExt}`;
+      descriptionTitle = `${title} - ${safeFileName}`;
     } else {
       // Use resource title as the file title, with file extension
       const safeTitle = title.replace(/[:\/\\?*|"><]/g, "").substring(0, 200);
@@ -232,11 +238,8 @@ ${description}
       <div class="files-header">
         <h3>Files ({record.files.length})</h3>
         <label class="filename-option">
-          <input 
-            type="checkbox" 
-            bind:checked={useFilenameInTitle}
-          />
-          <span>Use filename as title</span>
+          <input type="checkbox" bind:checked={useFilenameInTitle} />
+          <span>Use filename in title</span>
         </label>
       </div>
       <div class="files-grid">
@@ -272,9 +275,22 @@ ${description}
 
 <footer>
   <p>
-    Made by <a href="https://gerbi-gmb.de" target="_blank" rel="noopener noreferrer">German BioImaging</a> 
-    for <a href="https://zenodo.org/communities/nfdi4bioimage/records" target="_blank" rel="noopener noreferrer">NFDI4BIOIMAGE</a>.
-    Open source – <a href="https://github.com/lubianat/zenodo2commons" target="_blank" rel="noopener noreferrer">View source code</a>.
+    Made by <a
+      href="https://gerbi-gmb.de"
+      target="_blank"
+      rel="noopener noreferrer">German BioImaging</a
+    >
+    for
+    <a
+      href="https://zenodo.org/communities/nfdi4bioimage/records"
+      target="_blank"
+      rel="noopener noreferrer">NFDI4BIOIMAGE</a
+    >. Open source –
+    <a
+      href="https://github.com/lubianat/zenodo2commons"
+      target="_blank"
+      rel="noopener noreferrer">View source code</a
+    >.
   </p>
 </footer>
 
