@@ -1,12 +1,14 @@
 <script>
   import { onMount } from "svelte";
   import { cleanDescription } from "./utils/htmlToWiki.js";
+  import { buildConstrainedUploadUrl, buildFullMetadata } from "./utils/urlTrimmer.js";
 
   let zenodoId = "17607828";
   let record = null;
   let error = null;
   let loading = false;
   let useFilenameInTitle = false; // Option to use filename instead of record title
+  let darkMode = false;
 
   const licenseMap = {
     "cc-by-4.0": "cc-by-4.0",
@@ -18,24 +20,71 @@
   };
 
   onMount(() => {
-    const path = window.location.pathname;
-    // Skip PR preview paths (e.g., /pr_preview/17) to avoid conflict with Zenodo IDs
-    if (path.includes("/pr_preview/")) {
-      return;
+    // Load dark mode preference from localStorage
+    try {
+      const savedDarkMode = localStorage.getItem('darkMode');
+      if (savedDarkMode !== null) {
+        darkMode = savedDarkMode === 'true';
+      } else {
+        // Check system preference
+        darkMode = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      }
+    } catch (e) {
+      // localStorage may fail in private browsing mode
+      darkMode = window.matchMedia('(prefers-color-scheme: dark)').matches;
     }
-    // Check if path contains a numeric ID (e.g. /17607828)
-    const match = path.match(/\/(\d+)/);
-    if (match) {
-      zenodoId = match[1];
+    applyDarkMode();
+
+    const path = window.location.pathname;
+    // Handle PR preview paths (e.g., /pr_preview/27/16979744)
+    // Extract the Zenodo ID even when in a PR preview
+    let idMatch;
+    if (path.includes('/pr_preview/')) {
+      // Match pattern: /pr_preview/{pr_number}/{zenodo_id}
+      idMatch = path.match(/\/pr_preview\/\d+\/(\d+)/);
+    } else {
+      // Match pattern: /{zenodo_id}
+      idMatch = path.match(/\/(\d+)$/);
+    }
+    
+    if (idMatch) {
+      zenodoId = idMatch[1];
       fetchZenodoRecord();
     }
   });
+
+  function toggleDarkMode() {
+    darkMode = !darkMode;
+    try {
+      localStorage.setItem('darkMode', darkMode.toString());
+    } catch (e) {
+      // localStorage may fail in private browsing mode or quota exceeded
+    }
+    applyDarkMode();
+  }
+
+  function applyDarkMode() {
+    if (darkMode) {
+      document.body.classList.add('dark-mode');
+    } else {
+      document.body.classList.remove('dark-mode');
+    }
+  }
 
   function getBasePath() {
     const baseUrl = import.meta.env.BASE_URL || "/";
     if (typeof window === "undefined") {
       return baseUrl.endsWith("/") ? baseUrl : `${baseUrl}/`;
     }
+    
+    // Check if we're in a PR preview environment
+    const path = window.location.pathname;
+    const prPreviewMatch = path.match(/^(\/[^\/]+\/pr_preview\/\d+)/);
+    if (prPreviewMatch) {
+      // Return the PR preview path as the base
+      return prPreviewMatch[1] + '/';
+    }
+    
     const resolved = new URL(baseUrl, window.location.origin).pathname;
     return resolved.endsWith("/") ? resolved : `${resolved}/`;
   }
@@ -80,7 +129,7 @@
       .map((creator) => {
         const name = creator.name || "";
         const orcid = normalizeOrcid(creator.orcid);
-        return orcid ? `${name} (ORCID: ${orcid})` : name;
+        return orcid ? `${name} ({{ORCID|${orcid}}})` : name;
       })
       .filter((value) => value.length > 0)
       .join("; ");
@@ -146,21 +195,70 @@ ${description}
     // Use the correct Zenodo file URL format (not the API content endpoint)
     const fileUrl = `https://zenodo.org/records/${record.id}/files/${file.key}`;
 
-    const params = new URLSearchParams({
-      wpUploadDescription: infoTemplate,
-      wpLicense: commonsLicense,
-      wpDestFile: destFile,
-      wpSourceType: "url",
-      wpUploadFileURL: fileUrl,
+    // Use the new URL trimmer utility that handles long URLs
+    const result = buildConstrainedUploadUrl({
+      title,
+      description,
+      tables,
+      date,
+      source,
+      authors,
+      recordId: record.id,
+      commonsLicense,
+      destFile,
+      fileUrl
     });
+    
+    return result;
+  }
 
-    return `https://commons.wikimedia.org/wiki/Special:Upload?${params.toString()}`;
+  function getFullMetadata(file, record) {
+    const metadata = record.metadata;
+    const title = metadata.title;
+    const { description, tables } = cleanDescription(metadata.description);
+    const date = metadata.publication_date;
+    const authors = formatCreators(metadata.creators);
+    const source = `https://zenodo.org/records/${record.id}`;
+
+    return buildFullMetadata({
+      title,
+      description,
+      tables,
+      date,
+      source,
+      authors,
+      recordId: record.id
+    });
+  }
+
+  async function copyToClipboard(text) {
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch (err) {
+      console.error('Failed to copy:', err);
+      return false;
+    }
   }
 </script>
 
 <main>
   <header>
-    <h1>Zenodo to Commons</h1>
+    <div class="header-content">
+      <h1>Zenodo to Commons</h1>
+      <button
+        class="dark-mode-toggle"
+        on:click={toggleDarkMode}
+        aria-label="Toggle dark mode"
+        title={darkMode ? "Switch to light mode" : "Switch to dark mode"}
+      >
+        {#if darkMode}
+          ☀️
+        {:else}
+          🌙
+        {/if}
+      </button>
+    </div>
     <p class="subtitle">
       Easily upload open-access files from Zenodo to Wikimedia Commons.
     </p>
@@ -244,7 +342,8 @@ ${description}
       </div>
       <div class="files-grid">
         {#each record.files as file}
-          {@const uploadUrl = buildUploadUrl(file, record)}
+          {@const uploadResult = buildUploadUrl(file, record)}
+          {@const fullMetadata = getFullMetadata(file, record)}
           <div class="file-card">
             <div class="file-info">
               <div class="file-name" title={file.key}>{file.key}</div>
@@ -253,10 +352,39 @@ ${description}
               </div>
             </div>
             <div class="actions">
-              {#if uploadUrl}
-                <a href={uploadUrl} target="_blank" class="upload-btn">
-                  Upload to Commons
-                </a>
+              {#if uploadResult}
+                <div class="action-buttons">
+                  <a href={uploadResult.url} target="_blank" class="upload-btn">
+                    Upload to Commons
+                  </a>
+                  {#if uploadResult.wasTruncated}
+                    <button
+                      class="warning-icon"
+                      title="Metadata was truncated to fit URL limits. Use the copy button to get full metadata."
+                      aria-label="Warning: Metadata truncated"
+                    >
+                      !
+                    </button>
+                  {/if}
+                  <button
+                    class="copy-btn"
+                    title="Copy full WikiMarkup metadata to clipboard"
+                    on:click={async () => {
+                      const success = await copyToClipboard(fullMetadata);
+                      if (success) {
+                        // Show a temporary success message
+                        const btn = event.target;
+                        const originalText = btn.textContent;
+                        btn.textContent = '✓';
+                        setTimeout(() => {
+                          btn.textContent = originalText;
+                        }, 2000);
+                      }
+                    }}
+                  >
+                    Copy
+                  </button>
+                </div>
               {:else}
                 <span
                   class="no-license"
@@ -311,6 +439,12 @@ ${description}
       "Open Sans",
       "Helvetica Neue",
       sans-serif;
+    transition: background-color 0.3s, color 0.3s;
+  }
+
+  :global(body.dark-mode) {
+    background-color: #1a1a1a;
+    color: #e0e0e0;
   }
 
   main {
@@ -324,15 +458,51 @@ ${description}
     margin-bottom: 3rem;
   }
 
+  .header-content {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 1rem;
+  }
+
   h1 {
     font-size: 2.5rem;
     margin-bottom: 0.5rem;
     color: #2c3e50;
   }
 
+  :global(body.dark-mode) h1 {
+    color: #e0e0e0;
+  }
+
+  .dark-mode-toggle {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    padding: 0.5rem;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.2s;
+  }
+
+  .dark-mode-toggle:hover {
+    background-color: rgba(0, 0, 0, 0.1);
+  }
+
+  :global(body.dark-mode) .dark-mode-toggle:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+  }
+
   .subtitle {
     color: #666;
     font-size: 1.1rem;
+  }
+
+  :global(body.dark-mode) .subtitle {
+    color: #a0a0a0;
   }
 
   .search-container {
@@ -350,6 +520,12 @@ ${description}
     border: 1px solid #e1e4e8;
   }
 
+  :global(body.dark-mode) .input-group {
+    background: #2d2d2d;
+    border-color: #404040;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  }
+
   input {
     flex: 1;
     padding: 0.8rem;
@@ -357,6 +533,14 @@ ${description}
     border: none;
     outline: none;
     background: transparent;
+  }
+
+  :global(body.dark-mode) input {
+    color: #e0e0e0;
+  }
+
+  :global(body.dark-mode) input::placeholder {
+    color: #9ca3af;
   }
 
   .primary-btn {
@@ -390,11 +574,22 @@ ${description}
     border: 1px solid #fcc;
   }
 
+  :global(body.dark-mode) .error-message {
+    background-color: #3d1a1a;
+    color: #ff6b6b;
+    border-color: #5d2a2a;
+  }
+
   .record-card {
     background: white;
     border-radius: 12px;
     padding: 2rem;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  }
+
+  :global(body.dark-mode) .record-card {
+    background: #2d2d2d;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
   }
 
   .record-header {
@@ -406,12 +601,20 @@ ${description}
     padding-bottom: 1rem;
   }
 
+  :global(body.dark-mode) .record-header {
+    border-bottom-color: #404040;
+  }
+
   .record-header h2 {
     margin: 0;
     font-size: 1.5rem;
     color: #2c3e50;
     flex: 1;
     margin-right: 1rem;
+  }
+
+  :global(body.dark-mode) .record-header h2 {
+    color: #e0e0e0;
   }
 
   .zenodo-link {
@@ -435,6 +638,10 @@ ${description}
     border-radius: 8px;
   }
 
+  :global(body.dark-mode) .record-meta {
+    background: #252525;
+  }
+
   .meta-item {
     display: flex;
     flex-direction: column;
@@ -449,9 +656,17 @@ ${description}
     font-weight: 600;
   }
 
+  :global(body.dark-mode) .label {
+    color: #a0a0a0;
+  }
+
   .value {
     font-size: 1rem;
     color: #333;
+  }
+
+  :global(body.dark-mode) .value {
+    color: #e0e0e0;
   }
 
   .badge {
@@ -467,14 +682,28 @@ ${description}
     color: #047857;
   }
 
+  :global(body.dark-mode) .badge.green {
+    background-color: #1a4d3d;
+    color: #6ee7b7;
+  }
+
   .badge.red {
     background-color: #fef2f2;
     color: #b91c1c;
   }
 
+  :global(body.dark-mode) .badge.red {
+    background-color: #4d1a1a;
+    color: #fca5a5;
+  }
+
   h3 {
     margin-bottom: 1rem;
     color: #4a5568;
+  }
+
+  :global(body.dark-mode) h3 {
+    color: #c0c0c0;
   }
 
   .description-section {
@@ -533,6 +762,13 @@ ${description}
     scrollbar-color: #cbd5e0 #f1f1f1;
   }
 
+  :global(body.dark-mode) .description-box {
+    background: #252525;
+    border-color: #404040;
+    color: #e0e0e0;
+    scrollbar-color: #4a4a4a #2d2d2d;
+  }
+
   .description-box::-webkit-scrollbar {
     width: 8px;
   }
@@ -542,13 +778,25 @@ ${description}
     border-radius: 4px;
   }
 
+  :global(body.dark-mode) .description-box::-webkit-scrollbar-track {
+    background: #2d2d2d;
+  }
+
   .description-box::-webkit-scrollbar-thumb {
     background: #cbd5e0;
     border-radius: 4px;
   }
 
+  :global(body.dark-mode) .description-box::-webkit-scrollbar-thumb {
+    background: #4a4a4a;
+  }
+
   .description-box::-webkit-scrollbar-thumb:hover {
     background: #a0aec0;
+  }
+
+  :global(body.dark-mode) .description-box::-webkit-scrollbar-thumb:hover {
+    background: #606060;
   }
 
   .files-grid {
@@ -569,9 +817,18 @@ ${description}
     flex-direction: column;
   }
 
+  :global(body.dark-mode) .file-card {
+    background: #2d2d2d;
+    border-color: #404040;
+  }
+
   .file-card:hover {
     transform: translateY(-2px);
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+  }
+
+  :global(body.dark-mode) .file-card:hover {
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
   }
 
   .file-info {
@@ -587,19 +844,37 @@ ${description}
     text-overflow: ellipsis;
   }
 
+  :global(body.dark-mode) .file-name {
+    color: #e0e0e0;
+  }
+
   .file-size {
     font-size: 0.85rem;
     color: #64748b;
   }
 
+  :global(body.dark-mode) .file-size {
+    color: #a0a0a0;
+  }
+
   .actions {
     padding: 1rem;
     border-top: 1px solid #e2e8f0;
-    text-align: center;
+  }
+
+  .action-buttons {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    justify-content: center;
+  }
+
+  :global(body.dark-mode) .actions {
+    border-top-color: #404040;
   }
 
   .upload-btn {
-    display: block;
+    flex: 1;
     background-color: #3366cc;
     color: white;
     padding: 0.6rem;
@@ -608,10 +883,58 @@ ${description}
     font-size: 0.9rem;
     font-weight: 500;
     transition: background-color 0.2s;
+    text-align: center;
   }
 
   .upload-btn:hover {
     background-color: #254b99;
+  }
+
+  .warning-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    background-color: #ef4444;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    font-size: 1rem;
+    font-weight: bold;
+    cursor: help;
+    flex-shrink: 0;
+    transition: background-color 0.2s;
+  }
+
+  .warning-icon:hover {
+    background-color: #dc2626;
+  }
+
+  .copy-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 60px;
+    height: 32px;
+    background-color: #10b981;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: background-color 0.2s;
+    padding: 0 0.75rem;
+  }
+
+  .copy-btn:hover {
+    background-color: #059669;
+  }
+
+  .copy-btn:active {
+    transform: scale(0.95);
   }
 
   .no-license {
@@ -619,6 +942,11 @@ ${description}
     font-size: 0.9rem;
     font-style: italic;
     cursor: not-allowed;
+    text-align: center;
+  }
+
+  :global(body.dark-mode) .no-license {
+    color: #6b7280;
   }
 
   .fade-in {
@@ -643,6 +971,11 @@ ${description}
     border-top: 1px solid #e2e8f0;
     color: #64748b;
     font-size: 0.9rem;
+  }
+
+  :global(body.dark-mode) footer {
+    border-top-color: #404040;
+    color: #a0a0a0;
   }
 
   footer p {
