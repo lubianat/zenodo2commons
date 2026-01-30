@@ -19,14 +19,19 @@
 
   onMount(() => {
     const path = window.location.pathname;
-    // Skip PR preview paths (e.g., /pr_preview/17) to avoid conflict with Zenodo IDs
+    // Handle PR preview paths (e.g., /pr_preview/27/16979744)
+    // Extract the Zenodo ID even when in a PR preview
+    let idMatch;
     if (path.includes('/pr_preview/')) {
-      return;
+      // Match pattern: /pr_preview/{pr_number}/{zenodo_id}
+      idMatch = path.match(/\/pr_preview\/\d+\/(\d+)/);
+    } else {
+      // Match pattern: /{zenodo_id}
+      idMatch = path.match(/\/(\d+)$/);
     }
-    // Check if path contains a numeric ID (e.g. /17607828)
-    const match = path.match(/\/(\d+)/);
-    if (match) {
-      zenodoId = match[1];
+    
+    if (idMatch) {
+      zenodoId = idMatch[1];
       fetchZenodoRecord();
     }
   });
@@ -36,6 +41,15 @@
     if (typeof window === "undefined") {
       return baseUrl.endsWith("/") ? baseUrl : `${baseUrl}/`;
     }
+    
+    // Check if we're in a PR preview environment
+    const path = window.location.pathname;
+    const prPreviewMatch = path.match(/^(\/[^\/]+\/pr_preview\/\d+)/);
+    if (prPreviewMatch) {
+      // Return the PR preview path as the base
+      return prPreviewMatch[1] + '/';
+    }
+    
     const resolved = new URL(baseUrl, window.location.origin).pathname;
     return resolved.endsWith("/") ? resolved : `${resolved}/`;
   }
