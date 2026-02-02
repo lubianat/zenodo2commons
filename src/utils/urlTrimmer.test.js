@@ -153,6 +153,34 @@ describe("urlTrimmer", () => {
       expect(isUrlTooLong(result.url)).toBe(false);
     });
 
+    it("includes notes when provided", () => {
+      const params = {
+        ...baseParams,
+        notes: "Published as part of Example Publication, 2022"
+      };
+      const result = buildConstrainedUploadUrl(params);
+      expect(result.url).toContain("Published+as+part+of");
+      expect(result.wasTruncated).toBe(false);
+      expect(isUrlTooLong(result.url)).toBe(false);
+    });
+
+    it("preserves notes when truncating tables", () => {
+      const longTables = `{| class="wikitable"\n` + 
+        Array(200).fill(0).map((_, i) => `! Header ${i}\n|-\n| Very long value ${i}`).join('\n') + 
+        '\n|}';
+      
+      const params = {
+        ...baseParams,
+        notes: "Important note about this resource",
+        tables: longTables
+      };
+      
+      const result = buildConstrainedUploadUrl(params);
+      expect(isUrlTooLong(result.url)).toBe(false);
+      expect(result.wasTruncated).toBe(true);
+      expect(result.url).toContain("Important+note");
+    });
+
     it("truncates tables when URL becomes too long", () => {
       const longTables = `{| class="wikitable"\n` + 
         Array(200).fill(0).map((_, i) => `! Header ${i}\n|-\n| Very long value ${i}`).join('\n') + 
@@ -303,6 +331,40 @@ The image is a visualization showing the integration of multimodal data includin
       expect(metadata).toContain("wikitable");
       expect(metadata).toContain("{{Zenodo|12345}}");
       expect(metadata).toContain("[[Category:Media from Zenodo]]");
+    });
+
+    it("includes notes when provided", () => {
+      const params = {
+        title: "Test Record",
+        description: "Test description",
+        notes: "Published as part of ''Example Publication'', 2022",
+        tables: "",
+        date: "2025-01-15",
+        source: "https://zenodo.org/records/12345",
+        authors: "John Doe",
+        recordId: "12345"
+      };
+
+      const metadata = buildFullMetadata(params);
+      expect(metadata).toContain("Test description");
+      expect(metadata).toContain("Published as part of ''Example Publication'', 2022");
+    });
+
+    it("works correctly without notes", () => {
+      const params = {
+        title: "Test Record",
+        description: "Test description",
+        notes: "",
+        tables: "",
+        date: "2025-01-15",
+        source: "https://zenodo.org/records/12345",
+        authors: "John Doe",
+        recordId: "12345"
+      };
+
+      const metadata = buildFullMetadata(params);
+      expect(metadata).toContain("Test description");
+      expect(metadata).not.toContain("undefined");
     });
 
     it("includes all tables regardless of length", () => {

@@ -139,6 +139,7 @@
     const metadata = record.metadata;
     const title = metadata.title;
     const { description, tables } = cleanDescription(metadata.description);
+    const notes = metadata.notes ? cleanDescription(metadata.notes).description : "";
     const date = metadata.publication_date;
     const authors = formatCreators(metadata.creators);
     const source = `https://zenodo.org/records/${record.id}`;
@@ -199,6 +200,7 @@ ${description}
     const result = buildConstrainedUploadUrl({
       title,
       description,
+      notes,
       tables,
       date,
       source,
@@ -216,6 +218,7 @@ ${description}
     const metadata = record.metadata;
     const title = metadata.title;
     const { description, tables } = cleanDescription(metadata.description);
+    const notes = metadata.notes ? cleanDescription(metadata.notes).description : "";
     const date = metadata.publication_date;
     const authors = formatCreators(metadata.creators);
     const source = `https://zenodo.org/records/${record.id}`;
@@ -223,6 +226,7 @@ ${description}
     return buildFullMetadata({
       title,
       description,
+      notes,
       tables,
       date,
       source,
@@ -329,6 +333,15 @@ ${description}
           <h3>Description</h3>
           <div class="description-box">
             {@html record.metadata.description}
+          </div>
+        </div>
+      {/if}
+
+      {#if record.metadata.notes}
+        <div class="description-section">
+          <h3>Notes</h3>
+          <div class="description-box">
+            {@html record.metadata.notes}
           </div>
         </div>
       {/if}
