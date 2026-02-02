@@ -337,6 +337,15 @@ ${description}
         </div>
       {/if}
 
+      {#if record.metadata.notes}
+        <div class="description-section">
+          <h3>Notes</h3>
+          <div class="description-box">
+            {@html record.metadata.notes}
+          </div>
+        </div>
+      {/if}
+
       <div class="files-header">
         <h3>Files ({record.files.length})</h3>
         <label class="filename-option">
