@@ -217,6 +217,22 @@ describe("cleanDescription", () => {
   });
 
   describe("Real-world examples", () => {
+    it("handles notes field from Zenodo API (issue #7458843)", () => {
+      const input = `Published as part of <i>Molino, Jean-François, Sabatier, Daniel, Grenand, Pierre, Engel, Julien, Frame, Dawn, Delprete, Piero G., Fleury, Marie, Odonne, Guillaume, Davy, Damien, Lucas, Eve J. &amp; Martin, Claire A., 2022, An annotated checklist of the tree species of French Guiana, including vernacular nomenclature, pp. 345-903 in Adansonia (3) 44 (26)</i> on page 488, DOI: 10.5252/adansonia2022v44a26, <a href="http://zenodo.org/record/7458777">http://zenodo.org/record/7458777</a>`;
+      
+      const result = cleanDescription(input);
+      
+      expect(result.description).toContain("Published as part of ''Molino, Jean-François");
+      expect(result.description).toContain("An annotated checklist of the tree species of French Guiana");
+      expect(result.description).toContain("DOI: 10.5252/adansonia2022v44a26");
+      expect(result.description).toContain("http://zenodo.org/record/7458777");
+      // Verify HTML entities are decoded
+      expect(result.description).toContain("&");
+      expect(result.description).not.toContain("&amp;");
+      // Verify links are stripped but text remains
+      expect(result.description).not.toContain("<a href");
+    });
+
     it("handles sample from Zenodo API (from issue)", () => {
       const input = `<p>Image from the NFDI4BIOIMAGE Calendar December 2025.</p>
 <strong>Study</strong>

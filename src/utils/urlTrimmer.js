@@ -156,6 +156,7 @@ export function truncateDescription(description, maxLength) {
  * @param {Object} params - Parameters object
  * @param {string} params.title - Record title
  * @param {string} params.description - Cleaned description text
+ * @param {string} params.notes - Cleaned notes text (optional)
  * @param {string} params.tables - WikiMarkup tables
  * @param {string} params.date - Publication date
  * @param {string} params.source - Source URL
@@ -167,6 +168,7 @@ export function buildFullMetadata(params) {
   const {
     title,
     description,
+    notes,
     tables,
     date,
     source,
@@ -174,9 +176,18 @@ export function buildFullMetadata(params) {
     recordId
   } = params;
   
+  // Build description section with notes if present
+  let descriptionSection = `${title}:
+${description}`;
+  
+  if (notes) {
+    descriptionSection += `
+
+${notes}`;
+  }
+  
   let template = `{{Information
-|description=${title}:
-${description}
+|description=${descriptionSection}
 |date=${date}
 |source=${source}
 |author=${authors}
@@ -201,6 +212,7 @@ ${description}
  * @param {Object} params - Parameters object
  * @param {string} params.title - Record title
  * @param {string} params.description - Cleaned description text
+ * @param {string} params.notes - Cleaned notes text (optional)
  * @param {string} params.tables - WikiMarkup tables
  * @param {string} params.date - Publication date
  * @param {string} params.source - Source URL
@@ -215,6 +227,7 @@ export function buildConstrainedUploadUrl(params) {
   const {
     title,
     description,
+    notes,
     tables,
     date,
     source,
@@ -226,10 +239,19 @@ export function buildConstrainedUploadUrl(params) {
   } = params;
   
   // Helper to build info template
-  function buildInfoTemplate(desc, tbl) {
+  function buildInfoTemplate(desc, nts, tbl) {
+    // Build description section with notes if present
+    let descriptionSection = `${title}:
+${desc}`;
+    
+    if (nts) {
+      descriptionSection += `
+
+${nts}`;
+    }
+    
     let template = `{{Information
-|description=${title}:
-${desc}
+|description=${descriptionSection}
 |date=${date}
 |source=${source}
 |author=${authors}
@@ -261,7 +283,7 @@ ${desc}
   }
   
   // Try with full content first
-  let url = buildUrl(buildInfoTemplate(description, tables));
+  let url = buildUrl(buildInfoTemplate(description, notes, tables));
   
   if (!isUrlTooLong(url)) {
     return { url, wasTruncated: false };
@@ -271,7 +293,7 @@ ${desc}
   // Strategy 1: Truncate tables significantly
   if (tables) {
     const baseUrl = `https://commons.wikimedia.org/wiki/Special:Upload?`;
-    const baseTemplate = buildInfoTemplate(description, '');
+    const baseTemplate = buildInfoTemplate(description, notes, '');
     const baseParams = new URLSearchParams({
       wpUploadDescription: baseTemplate,
       wpLicense: commonsLicense,
@@ -287,7 +309,7 @@ ${desc}
     
     if (maxTableLength > MIN_TABLE_LENGTH) {
       const truncatedTables = truncateTables(tables, maxTableLength);
-      url = buildUrl(buildInfoTemplate(description, truncatedTables));
+      url = buildUrl(buildInfoTemplate(description, notes, truncatedTables));
       
       if (!isUrlTooLong(url)) {
         return { url, wasTruncated: true };
@@ -295,16 +317,23 @@ ${desc}
     }
   }
   
-  // Strategy 2: Remove tables entirely, keep full description
-  url = buildUrl(buildInfoTemplate(description, ''));
+  // Strategy 2: Remove tables entirely, keep full description and notes
+  url = buildUrl(buildInfoTemplate(description, notes, ''));
   
   if (!isUrlTooLong(url)) {
     return { url, wasTruncated: true };
   }
   
-  // Strategy 3: Truncate description too
+  // Strategy 3: Try without notes to see if description fits
+  url = buildUrl(buildInfoTemplate(description, '', ''));
+  
+  if (!isUrlTooLong(url)) {
+    return { url, wasTruncated: true };
+  }
+  
+  // Strategy 4: Truncate description (notes already removed)
   const baseUrl = `https://commons.wikimedia.org/wiki/Special:Upload?`;
-  const minimalTemplate = buildInfoTemplate('', '');
+  const minimalTemplate = buildInfoTemplate('', '', '');
   const minimalParams = new URLSearchParams({
     wpUploadDescription: minimalTemplate,
     wpLicense: commonsLicense,
@@ -316,5 +345,5 @@ ${desc}
   const maxDescLength = MAX_URL_LENGTH - minimalLength - URL_ENCODING_MARGIN;
   
   const truncatedDesc = truncateDescription(description, maxDescLength);
-  return { url: buildUrl(buildInfoTemplate(truncatedDesc, '')), wasTruncated: true };
+  return { url: buildUrl(buildInfoTemplate(truncatedDesc, '', '')), wasTruncated: true };
 }
